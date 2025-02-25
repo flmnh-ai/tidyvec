@@ -1,4 +1,46 @@
 url: https://flmnh-ai.github.io/tidyvec/
+
 template:
   bootstrap: 5
+  bootswatch: cosmo
+  bslib:
+    primary: "#3973B6"
+    navbar-dark-brand-color: "#FFFFFF"
 
+navbar:
+  structure:
+    left:  [intro, reference, articles, tutorials, news]
+    right: [search, github]
+  components:
+    articles:
+      text: Articles
+      menu:
+      - text: Getting Started
+        href: articles/getting-started.html
+
+reference:
+  - title: "Core Functions"
+    desc: >
+      Functions for creating and working with vector collections
+    contents:
+      - vec
+      - embed
+      - nearest
+      - '%~%'
+      - inspect_collection
+  - title: "Embedders"
+    desc: "Functions for generating embeddings"
+    contents:
+      - embedder_tfidf
+      - embedder_hf
+      - setup_python
+  - title: "Visualization"
+    desc: "Functions for visualizing vector spaces"
+    contents:
+      - viz_embeddings
+      - viz_images
+
+footer:
+  structure:
+    left: developed_by
+    right: [built_with, legal]
