@@ -1,0 +1,279 @@
+---
+title: "Getting Started with TidyVec"
+author: "Nick Gauthier"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with TidyVec}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7, 
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Introduction
+
+TidyVec is a lightweight package that brings vector embeddings and similarity search to the tidyverse ecosystem. It allows you to store embeddings alongside your data in tibbles and perform vector search operations while maintaining the ability to use all your familiar dplyr verbs.
+
+This vignette will show you how to:
+
+1. Create vector collections
+2. Generate embeddings for text and images
+3. Find similar items using vector search
+4. Visualize embedding spaces
+5. Combine vector search with tidyverse operations
+
+## Installation
+
+You can install TidyVec from GitHub:
+
+```{r eval=FALSE}
+# install.packages("devtools")
+devtools::install_github("nick-gauthier/tidyvec")
+```
+
+Load the required packages:
+
+```{r setup}
+library(dplyr)
+library(ggplot2)
+library(tidyvec)
+```
+
+## Creating a Vector Collection
+
+At its core, TidyVec treats vector collections as enhanced tibbles. Any tibble can be converted to a vector collection using the `vec()` function:
+
+```{r}
+# Create a simple dataset
+books <- tibble(
+  id = c("book1", "book2", "book3", "book4", "book5"),
+  title = c(
+    "The Art of Data Science",
+    "Advanced R Programming",
+    "Tidy Data Visualization",
+    "Statistical Learning Methods",
+    "Machine Learning with R"
+  ),
+  author = c("Smith", "Jones", "Brown", "Davis", "Wilson"),
+  year = c(2018, 2020, 2019, 2021, 2022),
+  description = c(
+    "A comprehensive guide to data analysis using modern techniques",
+    "Deep dive into R programming for advanced users",
+    "Creating beautiful visualizations with ggplot2 and the tidyverse",
+    "Introduction to statistical learning methods and their applications",
+    "Practical machine learning approaches with R examples"
+  )
+)
+
+# Convert to a vector collection
+books_vec <- vec(books)
+books_vec
+```
+
+By default, a column named `embedding` will be created to store vector embeddings.
+
+## Generating Embeddings
+
+For this example, we'll use a simple TF-IDF embedder for our text data:
+
+```{r}
+# Create a TF-IDF embedder from our descriptions
+embedder <- embedder_tfidf(books$description)
+
+# Update our collection with the embedding function
+books_vec <- vec(books, embedding_fn = embedder)
+
+# Generate embeddings for the description column
+books_vec <- embed(books_vec, content_column = "description")
+
+# Look at the result
+books_vec
+```
+
+Each book now has an embedding vector derived from its description.
+
+## Finding Similar Items
+
+Now we can find books similar to a text query:
+
+```{r}
+# Find books similar to a query
+query_results <- books_vec %>%
+  nearest("machine learning and statistics", n = 3)
+
+# View the results with similarity scores
+query_results %>%
+  select(title, author, similarity)
+```
+
+We can also use the similarity operator `%~%` for a more concise syntax:
+
+```{r}
+# Using the similarity operator
+"programming in R" %~% books_vec %>%
+  select(title, author, similarity)
+```
+
+## Combining with Tidyverse Operations
+
+What makes TidyVec special is how seamlessly it integrates with tidyverse workflows. You can use standard dplyr operations before or after vector search:
+
+```{r}
+# Filter to recent books, then find similar ones
+books_vec %>%
+  filter(year >= 2020) %>%
+  nearest("R methods", n = 2) %>%
+  select(title, year, similarity)
+```
+
+You can also perform vector search first, then filter the results:
+
+```{r}
+# Find similar books, then filter by similarity threshold
+books_vec %>%
+  nearest("R methods", n = 5) %>%
+  filter(similarity > 0.2) %>%
+  select(title, similarity)
+```
+
+## Working with Images
+
+TidyVec excels at working with multimodal data, including images. For this, we typically use neural embedding models like CLIP via HuggingFace.
+
+> Note: Using neural embedders requires Python and some dependencies. Run `setup_python()` to set up the required environment.
+
+```{r eval=FALSE}
+# Set up the Python environment
+setup_python()
+
+# Create a CLIP embedder
+clip_embedder <- embedder_hf("openai/clip-vit-base-patch32", modality = "multimodal")
+
+# Get paths to example images included with the package
+img_paths <- c(
+  cat = system.file("extdata/images", "cat.jpg", package = "tidyvec"),
+  dog = system.file("extdata/images", "dog.jpg", package = "tidyvec"),
+  beach = system.file("extdata/images", "beach.jpg", package = "tidyvec"),
+  mountain = system.file("extdata/images", "mountain.jpg", package = "tidyvec"),
+  city = system.file("extdata/images", "city.jpg", package = "tidyvec")
+)
+
+# Create an image collection
+images <- tibble(
+  id = names(img_paths),
+  path = unname(img_paths),
+  category = c("pet", "pet", "nature", "nature", "urban")
+) %>%
+  vec(embedding_fn = clip_embedder) %>%
+  embed(content_column = "path")
+
+# Find images similar to text
+"a cat playing" %~% images %>%
+  select(id, path, similarity)
+
+# Find images similar to another image
+nearest(images, "images/dog-on-beach.jpg", n = 2)
+
+# Find images similar to text and visualize
+"a dog on a mountain" %~% images %>%
+  viz_images(path_column = "path", label_columns = c("id", "category"), n = 2)
+
+"a dog on a beach" %~% images %>%
+  viz_images(path_column = "path", label_columns = c("id", "category"), n = 2)
+```
+
+## Visualizing Embedding Spaces
+
+TidyVec provides a simple way to visualize your embedding spaces using dimensionality reduction techniques:
+
+```{r eval=FALSE}
+# Visualize our book embeddings
+images %>%
+  viz_embeddings(method = "tsne", labels = "id", color = "category", perplexity = 1)
+```
+
+## Advanced Use Cases
+
+### RAG (Retrieval-Augmented Generation)
+
+TidyVec is perfect for creating simple RAG systems:
+
+```{r eval=FALSE}
+# Split document into chunks
+document_chunks <- tibble(
+  id = paste0("chunk", 1:10),
+  text = c(
+    "R is a programming language for statistical computing.",
+    "The tidyverse is a collection of R packages for data science.",
+    "ggplot2 is used for data visualization in R.",
+    "dplyr provides functions for data manipulation.",
+    "tidyr helps to create tidy data.",
+    "purrr enhances R's functional programming capabilities.",
+    "readr provides functions to read rectangular data.",
+    "tibble is a modern reimagining of the data frame.",
+    "stringr provides functions for string manipulation.",
+    "forcats provides tools for working with categorical variables."
+  ),
+  source = "R Documentation"
+) %>%
+  vec(embedding_fn = embedder_tfidf(.$text)) %>%
+  embed(content_column = "text")
+
+# User query
+query_results <- document_chunks %>%
+  nearest("How do I visualize data in R?", n = 3)
+
+# Use results to generate answer with an LLM
+query_results %>%
+  select(text, similarity)
+```
+
+### Custom Embedders
+
+You can easily create custom embedding functions:
+
+```{r}
+# Create a simple embedder that counts word frequencies
+word_freq_embedder <- function(vocabulary = c("r", "data", "programming", "statistics", "visualization")) {
+  function(text) {
+    text <- tolower(text)
+    vapply(vocabulary, function(word) {
+      sum(gregexpr(word, text)[[1]] > 0)
+    }, numeric(1))
+  }
+}
+
+# Use custom embedder
+simple_embedder <- word_freq_embedder()
+books_vec <- books %>%
+  vec(embedding_fn = simple_embedder) %>%
+  embed(content_column = "description")
+
+# Query with custom embedder
+"data visualization" %~% books_vec %>%
+  select(title, similarity)
+```
+
+## Conclusion
+
+TidyVec provides a lightweight, tidyverse-friendly way to work with vector embeddings. By treating embeddings as just another column in your tibbles, you get all the power of vector search while maintaining the flexibility and familiarity of the tidyverse.
+
+Key benefits:
+
+1. Seamless integration with dplyr, ggplot2, and other tidyverse packages
+2. Support for multiple modalities (text, images)
+3. Flexible embedding generation
+4. Simple, intuitive API
+5. Visualization capabilities
+
+For more advanced use cases or larger datasets, consider using FAISS or other specialized vector databases, but for many common applications, TidyVec provides an elegant and easy-to-use solution.

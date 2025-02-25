@@ -1,0 +1,13 @@
+# Handle line endings automatically for text files
+* text=auto
+
+# These files are binary and should not be modified
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.Rdata binary
+*.rda binary
+*.RDS binary
