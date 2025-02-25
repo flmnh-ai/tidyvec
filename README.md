@@ -1,7 +1,8 @@
 # tidyvec <img src="man/figures/logo.png" align="right" height="139" alt=""/>
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/nick-gauthier/tidyvec/workflows/R-CMD-check/badge.svg)](https://github.com/nick-gauthier/tidyvec/actions)
+[![pkgdown](https://github.com/flmnh-ai/tidyvec/workflows/pkgdown/badge.svg)](https://flmnh-ai.github.io/tidyvec/)
+[![R-CMD-check](https://github.com/flmnh-ai/tidyvec/workflows/R-CMD-check/badge.svg)](https://github.com/flmmh-ai/tidyvec/actions)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![CRAN status](https://www.r-pkg.org/badges/version/tidyvec)](https://CRAN.R-project.org/package=tidyvec)
 <!-- badges: end -->
