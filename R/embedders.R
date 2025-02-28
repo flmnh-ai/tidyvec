@@ -305,7 +305,7 @@ embedder_tfidf <- function(corpus, min_freq = 2) {
 #' @export
 setup_python <- function(method = c("virtualenv", "conda"),
                          envname = "tidyvec_env",
-                         packages = c("torch", "transformers", "pillow", "sentencepiece", "protobuf")) {
+                         packages = c("torch", "transformers", "pillow", "sentencepiece", "protobuf", "numpy")) {
   method <- match.arg(method)
 
   if (!requireNamespace("reticulate", quietly = TRUE)) {

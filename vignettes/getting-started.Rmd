@@ -26,19 +26,19 @@ TidyVec is a lightweight package that brings vector embeddings and similarity se
 
 This vignette will show you how to:
 
-1. Create vector collections
-2. Generate embeddings for text and images
-3. Find similar items using vector search
-4. Visualize embedding spaces
-5. Combine vector search with tidyverse operations
+1.  Create vector collections
+2.  Generate embeddings for text and images
+3.  Find similar items using vector search
+4.  Visualize embedding spaces
+5.  Combine vector search with tidyverse operations
 
 ## Installation
 
 You can install TidyVec from GitHub:
 
 ```{r eval=FALSE}
-# install.packages("devtools")
-devtools::install_github("flmnh-ai/tidyvec")
+# install.packages("remotes")
+remotes::install_github("flmnh-ai/tidyvec")
 ```
 
 Load the required packages:
@@ -161,13 +161,13 @@ clip_embedder <- embedder_hf("openai/clip-vit-base-patch32", modality = "multimo
 
 # Get paths to example images included with the package
 img_paths <- c(
-  cat = system.file("extdata/images", "cat.jpg", package = "tidyvec"),
+  cat = ,
   dog = system.file("extdata/images", "dog.jpg", package = "tidyvec"),
   beach = system.file("extdata/images", "beach.jpg", package = "tidyvec"),
   mountain = system.file("extdata/images", "mountain.jpg", package = "tidyvec"),
   city = system.file("extdata/images", "city.jpg", package = "tidyvec")
 )
-
+system.file("extdata", "images", "cat.jpg", package = "tidyvec")
 # Create an image collection
 images <- tibble(
   id = names(img_paths),
@@ -182,7 +182,7 @@ images <- tibble(
   select(id, path, similarity)
 
 # Find images similar to another image
-nearest(images, "images/dog-on-beach.jpg", n = 2)
+nearest(images, system.file("extdata/images", "dog-on-beach.jpg", package = "tidyvec"), n = 2)
 
 # Find images similar to text and visualize
 "a dog on a mountain" %~% images %>%
@@ -270,10 +270,10 @@ TidyVec provides a lightweight, tidyverse-friendly way to work with vector embed
 
 Key benefits:
 
-1. Seamless integration with dplyr, ggplot2, and other tidyverse packages
-2. Support for multiple modalities (text, images)
-3. Flexible embedding generation
-4. Simple, intuitive API
-5. Visualization capabilities
+1.  Seamless integration with dplyr, ggplot2, and other tidyverse packages
+2.  Support for multiple modalities (text, images)
+3.  Flexible embedding generation
+4.  Simple, intuitive API
+5.  Visualization capabilities
 
 For more advanced use cases or larger datasets, consider using FAISS or other specialized vector databases, but for many common applications, TidyVec provides an elegant and easy-to-use solution.
