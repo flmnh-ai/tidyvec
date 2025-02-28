@@ -161,13 +161,13 @@ clip_embedder <- embedder_hf("openai/clip-vit-base-patch32", modality = "multimo
 
 # Get paths to example images included with the package
 img_paths <- c(
-  cat = ,
-  dog = system.file("extdata/images", "dog.jpg", package = "tidyvec"),
-  beach = system.file("extdata/images", "beach.jpg", package = "tidyvec"),
-  mountain = system.file("extdata/images", "mountain.jpg", package = "tidyvec"),
-  city = system.file("extdata/images", "city.jpg", package = "tidyvec")
+  cat = system.file("images/cat.jpeg", package = "tidyvec"), 
+  dog = system.file("images", "dog.jpeg", package = "tidyvec"),
+  beach = system.file("images", "beach.jpeg", package = "tidyvec"),
+  mountain = system.file("images", "mountain.jpeg", package = "tidyvec"),
+  city = system.file("images", "city.jpeg", package = "tidyvec")
 )
-system.file("extdata", "images", "cat.jpg", package = "tidyvec")
+
 # Create an image collection
 images <- tibble(
   id = names(img_paths),
@@ -182,7 +182,7 @@ images <- tibble(
   select(id, path, similarity)
 
 # Find images similar to another image
-nearest(images, system.file("extdata/images", "dog-on-beach.jpg", package = "tidyvec"), n = 2)
+nearest(images, system.file("images", "dog-on-beach.jpeg", package = "tidyvec"), n = 2)
 
 # Find images similar to text and visualize
 "a dog on a mountain" %~% images %>%
