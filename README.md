@@ -31,8 +31,8 @@ While specialized vector databases like FAISS and Pinecone offer high performanc
 You can install tidyvec from GitHub:
 
 ```r
-# install.packages("devtools")
-devtools::install_github("nick-gauthier/tidyvec")
+# install.packages("remotes")
+remotes::install_github("flmnh-ai/tidyvec")
 ```
 
 For neural embedding models via HuggingFace, you'll also need Python with the required dependencies:
