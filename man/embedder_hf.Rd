@@ -7,7 +7,8 @@
 embedder_hf(
   model_name,
   modality = c("multimodal", "text", "image"),
-  device = "cpu"
+  device = "cpu",
+  cache_dir = NULL
 )
 }
 \arguments{
@@ -16,6 +17,8 @@ embedder_hf(
 \item{modality}{Type of model ("text", "image", or "multimodal")}
 
 \item{device}{Device to use ("cpu", "cuda", or "mps")}
+
+\item{cache_dir}{Optional directory for caching model files}
 }
 \value{
 An embedding function
