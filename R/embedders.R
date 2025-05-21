@@ -55,7 +55,7 @@ device = '", device, "'
         # Detect if x is an image path or text
         if (is.character(x) && length(x) == 1 && grepl("\\.(jpg|jpeg|png|gif|bmp)$", x)) {
           # Process as image
-          image <- PIL$Image$open(x)
+          image <- PIL$Image$open(x)$convert("RGB")
           inputs <- processor(images = list(image), return_tensors = "pt")
           inputs$to(device)
 
@@ -111,7 +111,7 @@ device = '", device, "'
         # Detect if x is an image path or text
         if (is.character(x) && length(x) == 1 && grepl("\\.(jpg|jpeg|png|gif|bmp)$", x)) {
           # Process as image
-          image <- PIL$Image$open(x)
+          image <- PIL$Image$open(x)$convert("RGB")
           inputs <- processor(images = list(image), return_tensors = "pt")
           inputs$to(device)
 
@@ -210,7 +210,7 @@ device = '", device, "'
 
       function(x) {
         # Assume x is a path to an image
-        image <- PIL$Image$open(x)
+        image <- PIL$Image$open(x)$convert("RGB")
         inputs <- processor(images = list(image), return_tensors = "pt")
         inputs$to(device)
 
@@ -232,7 +232,7 @@ device = '", device, "'
       # And in the image-only model function section:
       function(x) {
         # Assume x is a path to an image
-        image <- PIL$Image$open(x)
+        image <- PIL$Image$open(x)$convert("RGB")
         inputs <- processor(images = list(image), return_tensors = "pt")
         inputs$to(device)
 
