@@ -108,13 +108,11 @@ print.tidyvec <- function(x, ...) {
 #' @param x A tidyvec object
 #' @param content_column Column containing content to embed
 #' @param embedding_fn Embedding function to use (overrides collection's function)
-#' @param batch_size Number of items to process in each batch
 #' @param force Whether to overwrite existing embeddings
 #' @param ... Additional arguments passed to the embedding function
 #' @return Updated tidyvec object with embeddings
 #' @export
-embed <- function(x, content_column, embedding_fn = NULL, batch_size = 50,
-                  force = FALSE, ...) {
+embed <- function(x, content_column, embedding_fn = NULL, force = FALSE, ...) {
   if (!inherits(x, "tidyvec")) {
     stop("Not a tidyvec object")
   }
@@ -134,9 +132,9 @@ embed <- function(x, content_column, embedding_fn = NULL, batch_size = 50,
   }
 
   # Identify rows to process (missing or force)
-  to_process <- rep(FALSE, nrow(x))
-  for (i in seq_len(nrow(x))) {
-    to_process[i] <- force || is.null(x[[emb_col]][[i]])
+  to_process <- vapply(x[[emb_col]], is.null, logical(1))
+  if (force) {
+    to_process <- rep(TRUE, nrow(x))
   }
 
   # If nothing to process, return early
@@ -144,40 +142,27 @@ embed <- function(x, content_column, embedding_fn = NULL, batch_size = 50,
     return(x)
   }
 
-  # Process in batches with progress bar
   indices <- which(to_process)
-  n_batches <- ceiling(length(indices) / batch_size)
 
+  # Setup progress bar
+  pb <- NULL
   if (requireNamespace("progress", quietly = TRUE)) {
     pb <- progress::progress_bar$new(
       format = "Computing embeddings [:bar] :percent eta: :eta",
       total = length(indices),
       clear = FALSE
     )
-    pb$tick(0)
   } else {
     message("Computing embeddings for ", length(indices), " items...")
   }
 
-  for (batch_idx in seq_len(n_batches)) {
-    # Get batch indices
-    start_idx <- (batch_idx - 1) * batch_size + 1
-    end_idx <- min(batch_idx * batch_size, length(indices))
-    batch_indices <- indices[start_idx:end_idx]
-
-    # Extract content for this batch
-    content <- x[[content_column]][batch_indices]
-
-    # Compute embeddings (one at a time to avoid passing a list)
-    for (j in seq_along(batch_indices)) {
-      idx <- batch_indices[j]
-      x[[emb_col]][[idx]] <- fn(content[[j]], ...)
-
-      if (exists("pb")) pb$tick()
-    }
+  # Process each item
+  for (idx in indices) {
+    x[[emb_col]][[idx]] <- fn(x[[content_column]][[idx]], ...)
+    if (!is.null(pb)) pb$tick()
   }
 
-  if (!exists("pb")) {
+  if (is.null(pb)) {
     message("Done computing embeddings.")
   }
 
