@@ -25,16 +25,7 @@ embedder_hf <- function(model_name,
     list(model = model, processor = processor)
   }
 
-  # Initialize Python environment
-  reticulate::py_run_string(paste0("
-import torch
-import transformers
-from transformers import AutoModel, AutoProcessor, AutoTokenizer, AutoImageProcessor
-", if(is_siglip) "from transformers import SiglipModel" else "", "
-device = '", device, "'
-"))
-
-  # Import needed modules
+  # Import Python modules (dependencies auto-provisioned via py_require() in .onLoad())
   transformers <- reticulate::import("transformers")
   torch <- reticulate::import("torch")
   PIL <- reticulate::import("PIL")
