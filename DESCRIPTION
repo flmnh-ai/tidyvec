@@ -23,6 +23,7 @@ Suggests:
     Rtsne,
     umap,
     progress,
+    qs,
     knitr,
     rmarkdown,
     magick,

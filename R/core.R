@@ -295,3 +295,41 @@ inspect_collection <- function(x) {
 
   invisible(x)
 }
+
+#' Save a tidyvec collection to disk
+#'
+#' @param x A tidyvec object
+#' @param file Path to save file (recommended: .qs extension)
+#' @return Invisibly returns the input object
+#' @export
+write_vec <- function(x, file) {
+  if (!inherits(x, "tidyvec")) {
+    stop("Not a tidyvec object")
+  }
+
+  if (!requireNamespace("qs", quietly = TRUE)) {
+    stop("Package 'qs' is required for persistence. Install with: install.packages('qs')")
+  }
+
+  qs::qsave(x, file)
+  invisible(x)
+}
+
+#' Read a tidyvec collection from disk
+#'
+#' @param file Path to tidyvec collection file
+#' @return A tidyvec object
+#' @export
+read_vec <- function(file) {
+  if (!requireNamespace("qs", quietly = TRUE)) {
+    stop("Package 'qs' is required for persistence. Install with: install.packages('qs')")
+  }
+
+  x <- qs::qread(file)
+
+  if (!inherits(x, "tidyvec")) {
+    stop("File does not contain a tidyvec object")
+  }
+
+  x
+}
