@@ -10,7 +10,9 @@ nearest(
   n = 5,
   as_embedding = FALSE,
   method = c("cosine", "euclidean", "dot"),
-  min_score = 0
+  min_score = 0,
+  keyword_weight = 0,
+  keyword_column = NULL
 )
 }
 \arguments{
@@ -25,6 +27,10 @@ nearest(
 \item{method}{Similarity method ("cosine", "euclidean", "dot")}
 
 \item{min_score}{Minimum similarity score}
+
+\item{keyword_weight}{Weight for keyword matching (0-1, default 0 for pure vector search)}
+
+\item{keyword_column}{Column to search for keywords (required if keyword_weight > 0)}
 }
 \value{
 Filtered tidyvec object with similarity scores
