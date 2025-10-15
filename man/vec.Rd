@@ -4,7 +4,7 @@
 \alias{vec}
 \title{Creates a vector collection from a data frame or tibble}
 \usage{
-vec(x, embedding_column = "embedding", embedding_fn = NULL, ...)
+vec(x, embedding_column = "embedding", embedding_fn = NULL)
 }
 \arguments{
 \item{x}{A data frame or tibble}
@@ -12,8 +12,6 @@ vec(x, embedding_column = "embedding", embedding_fn = NULL, ...)
 \item{embedding_column}{Name of column containing embeddings (or to be created)}
 
 \item{embedding_fn}{Function to generate embeddings (optional)}
-
-\item{...}{Additional attributes to add to the collection}
 }
 \value{
 A tidyvec object

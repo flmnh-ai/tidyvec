@@ -4,14 +4,7 @@
 \alias{embed}
 \title{Compute embeddings for items in a tidyvec collection}
 \usage{
-embed(
-  x,
-  content_column,
-  embedding_fn = NULL,
-  batch_size = 50,
-  force = FALSE,
-  ...
-)
+embed(x, content_column, embedding_fn = NULL, force = FALSE, ...)
 }
 \arguments{
 \item{x}{A tidyvec object}
@@ -19,8 +12,6 @@ embed(
 \item{content_column}{Column containing content to embed}
 
 \item{embedding_fn}{Embedding function to use (overrides collection's function)}
-
-\item{batch_size}{Number of items to process in each batch}
 
 \item{force}{Whether to overwrite existing embeddings}
 

@@ -7,7 +7,7 @@
 setup_python(
   method = c("virtualenv", "conda"),
   envname = "tidyvec_env",
-  packages = c("torch", "transformers", "pillow", "sentencepiece")
+  packages = c("torch", "transformers", "pillow", "sentencepiece", "protobuf", "numpy")
 )
 }
 \arguments{
