@@ -3,10 +3,9 @@
 #' @param x A data frame or tibble
 #' @param embedding_column Name of column containing embeddings (or to be created)
 #' @param embedding_fn Function to generate embeddings (optional)
-#' @param ... Additional attributes to add to the collection
 #' @return A tidyvec object
 #' @export
-vec <- function(x, embedding_column = "embedding", embedding_fn = NULL, ...) {
+vec <- function(x, embedding_column = "embedding", embedding_fn = NULL) {
   # Ensure x is a tibble
   x <- tibble::as_tibble(x)
 
@@ -22,12 +21,6 @@ vec <- function(x, embedding_column = "embedding", embedding_fn = NULL, ...) {
   # Store embedding column name and function
   attr(x, "embedding_column") <- embedding_column
   attr(x, "embedding_fn") <- embedding_fn
-
-  # Add any additional attributes
-  extras <- list(...)
-  for (name in names(extras)) {
-    attr(x, name) <- extras[[name]]
-  }
 
   x
 }
