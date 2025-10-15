@@ -2,7 +2,6 @@
 
 S3method("[",tidyvec)
 S3method(print,tidyvec)
-export("%~%")
 export(embed)
 export(embedder_hf)
 export(embedder_tfidf)

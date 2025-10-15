@@ -116,11 +116,11 @@ query_results %>%
   select(title, author, similarity)
 ```
 
-We can also use the similarity operator `%~%` for a more concise syntax:
+We can also query directly with the `nearest()` function:
 
 ```{r}
-# Using the similarity operator
-"programming in R" %~% books_vec %>%
+# Using the nearest() function
+nearest(books_vec, "programming in R") %>%
   select(title, author, similarity)
 ```
 
@@ -178,17 +178,17 @@ images <- tibble(
   embed(content_column = "path")
 
 # Find images similar to text
-"a cat playing" %~% images %>%
+nearest(images, "a cat playing") %>%
   select(id, path, similarity)
 
 # Find images similar to another image
 nearest(images, system.file("images", "dog-on-beach.jpeg", package = "tidyvec"), n = 2)
 
 # Find images similar to text and visualize
-"a dog on a mountain" %~% images %>%
+nearest(images, "a dog on a mountain") %>%
   viz_images(path_column = "path", label_columns = c("id", "category"), n = 2)
 
-"a dog on a beach" %~% images %>%
+nearest(images, "a dog on a beach") %>%
   viz_images(path_column = "path", label_columns = c("id", "category"), n = 2)
 ```
 
@@ -260,7 +260,7 @@ books_vec <- books %>%
   embed(content_column = "description")
 
 # Query with custom embedder
-"data visualization" %~% books_vec %>%
+nearest(books_vec, "data visualization") %>%
   select(title, similarity)
 ```
 

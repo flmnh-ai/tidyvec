@@ -74,8 +74,8 @@ books_vec <- books %>%
   vec(embedding_fn = embedder) %>%
   embed(content_column = "description")
 
-# Find similar books using the `%~%` operator
-"data visualization techniques" %~% books_vec %>%
+# Find similar books
+nearest(books_vec, "data visualization techniques") %>%
   select(title, similarity)
 ```
 
@@ -104,11 +104,11 @@ images <- tibble(
   embed(content_column = "path")
 
 # Find images similar to text
-"a cat playing" %~% images %>%
+nearest(images, "a cat playing") %>%
   select(id, path, similarity)
 
 # Find similar images and visualize them
-"a dog on a beach" %~% images %>%
+nearest(images, "a dog on a beach") %>%
   viz_images(path_column = "path", label_columns = c("id", "category"))
 ```
 
@@ -146,15 +146,11 @@ comments <- tibble(text = c("I love this product", "Terrible experience")) %>%
 
 ### Similarity Search
 
-Find similar items with the `nearest()` function or `%~%` operator:
+Find similar items with the `nearest()` function:
 
 ```r
 # Find nearest neighbors
-my_collection %>%
-  nearest("query text", n = 5)
-
-# Or using the similarity operator
-"query text" %~% my_collection
+nearest(my_collection, "query text", n = 5)
 ```
 
 ### Embedding Visualization
