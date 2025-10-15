@@ -49,6 +49,18 @@ embedding_fn <- function(x) {
   attr(x, "embedding_fn", exact = TRUE)
 }
 
+#' Get first valid (non-NULL) embedding from a list
+#'
+#' @param emb_list List of embeddings
+#' @return First non-NULL embedding or NULL if none found
+#' @keywords internal
+first_valid_embedding <- function(emb_list) {
+  for (emb in emb_list) {
+    if (!is.null(emb)) return(emb)
+  }
+  NULL
+}
+
 #' @export
 print.tidyvec <- function(x, ...) {
   emb_col <- embedding_column(x)
@@ -60,9 +72,9 @@ print.tidyvec <- function(x, ...) {
   cat("Has embedding function:", ifelse(has_fn, "Yes", "No"), "\n")
 
   # Print the embedding dimension if available
-  valid_embs <- x[[emb_col]][!vapply(x[[emb_col]], is.null, logical(1))]
-  if (length(valid_embs) > 0) {
-    cat("Embedding dimension:", length(valid_embs[[1]]), "\n")
+  first_emb <- first_valid_embedding(x[[emb_col]])
+  if (!is.null(first_emb)) {
+    cat("Embedding dimension:", length(first_emb), "\n")
   }
 
   # Print the table
@@ -274,14 +286,7 @@ inspect_collection <- function(x) {
 
     if (n_with_embeddings > 0) {
       # Get first non-null embedding
-      sample_emb <- NULL
-      for (i in seq_along(x[[emb_col]])) {
-        if (!is.null(x[[emb_col]][[i]])) {
-          sample_emb <- x[[emb_col]][[i]]
-          break
-        }
-      }
-
+      sample_emb <- first_valid_embedding(x[[emb_col]])
       if (!is.null(sample_emb)) {
         cat("Embedding dimension:", length(sample_emb), "\n")
       }
