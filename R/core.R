@@ -223,23 +223,19 @@ nearest <- function(x, query, n = 5, as_embedding = FALSE,
   }
 
   if (is.null(query_embedding)) {
-    warning("Could not create embedding for query")
-    return(x[0, ])  # Return empty tibble with same structure
+    stop("Could not create embedding for query")
   }
 
   # Choose similarity function
   method <- match.arg(method)
   sim_fn <- switch(method,
                    cosine = function(a, b) {
-                     if (is.null(a) || is.null(b)) return(0)
                      sum(a * b) / (sqrt(sum(a^2)) * sqrt(sum(b^2)))
                    },
                    euclidean = function(a, b) {
-                     if (is.null(a) || is.null(b)) return(0)
                      1 / (1 + sqrt(sum((a - b)^2)))
                    },
                    dot = function(a, b) {
-                     if (is.null(a) || is.null(b)) return(0)
                      sum(a * b)
                    }
   )

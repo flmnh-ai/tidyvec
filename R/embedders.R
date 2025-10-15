@@ -287,8 +287,7 @@ embedder_tfidf <- function(corpus, min_freq = 2) {
 
     # Check if dtm is empty
     if (nrow(dtm_new) == 0 || sum(dtm_new) == 0) {
-      warning("Query contains no terms found in corpus vocabulary")
-      return(NULL)  # Return NULL instead of an empty vector
+      stop("Query contains no terms found in corpus vocabulary")
     }
 
     tfidf_vec <- tfidf$transform(dtm_new)
