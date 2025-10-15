@@ -38,12 +38,16 @@ embedder_hf <- function(model_name,
       model <- loaded$model
       processor <- loaded$processor
 
-      function(x) {
-        # Detect if x is an image path or text
-        if (is.character(x) && length(x) == 1 && file.exists(x) && !dir.exists(x)) {
-          # Process as image
-          image <- PIL$Image$open(x)
-          inputs <- processor(images = list(image), return_tensors = "pt")
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Detect if batch is images or text (check first item)
+        is_image <- is.character(x[1]) && file.exists(x[1]) && !dir.exists(x[1])
+
+        if (is_image) {
+          # Process as images
+          images <- lapply(x, PIL$Image$open)
+          inputs <- processor(images = images, return_tensors = "pt")
           inputs$to(device)
 
           with(torch$no_grad(), {
@@ -52,12 +56,12 @@ embedder_hf <- function(model_name,
             image_features <- image_features / image_features$norm(dim = -1L, keepdim = TRUE)
           })
 
-          # Convert to R vector
-          emb <- as.numeric(image_features$cpu()$numpy()[1, ])
+          # Convert to R
+          emb_array <- image_features$cpu()$numpy()
         } else {
           # Process as text
           text_kwargs <- list(
-            text = list(as.character(x)),
+            text = as.character(x),
             return_tensors = "pt",
             padding = "max_length"
           )
@@ -81,25 +85,36 @@ embedder_hf <- function(model_name,
             text_features <- text_features / text_features$norm(dim = -1L, keepdim = TRUE)
           })
 
-          # Convert to R vector
-          emb <- as.numeric(text_features$cpu()$numpy()[1, ])
+          # Convert to R
+          emb_array <- text_features$cpu()$numpy()
         }
 
-        # Return normalized embedding
-        emb
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
       }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
     } else {
       # For CLIP-like models (existing code)
       model <- transformers$CLIPModel$from_pretrained(model_name, cache_dir = cache_dir)
       processor <- transformers$CLIPProcessor$from_pretrained(model_name, cache_dir = cache_dir)
       model$to(device)
 
-      function(x) {
-        # Detect if x is an image path or text
-        if (is.character(x) && length(x) == 1 && file.exists(x) && !dir.exists(x)) {
-          # Process as image
-          image <- PIL$Image$open(x)
-          inputs <- processor(images = list(image), return_tensors = "pt")
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Detect if batch is images or text (check first item)
+        is_image <- is.character(x[1]) && file.exists(x[1]) && !dir.exists(x[1])
+
+        if (is_image) {
+          # Process as images
+          images <- lapply(x, PIL$Image$open)
+          inputs <- processor(images = images, return_tensors = "pt")
           inputs$to(device)
 
           with(torch$no_grad(), {
@@ -109,7 +124,7 @@ embedder_hf <- function(model_name,
           })
         } else {
           # Process as text
-          inputs <- processor(text = list(as.character(x)), return_tensors = "pt")
+          inputs <- processor(text = as.character(x), return_tensors = "pt")
           inputs$to(device)
 
           with(torch$no_grad(), {
@@ -119,9 +134,19 @@ embedder_hf <- function(model_name,
           })
         }
 
-        # Convert to R vector
-        as.numeric(outputs$cpu()$numpy()[1, ])
+        # Convert to R
+        emb_array <- outputs$cpu()$numpy()
+
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
       }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
     }
   } else if (modality == "text") {
     # Text-only model
@@ -131,9 +156,11 @@ embedder_hf <- function(model_name,
       model <- loaded$model
       processor <- loaded$processor
 
-      function(x) {
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
         text_kwargs <- list(
-          text = list(as.character(x)),
+          text = as.character(x),
           return_tensors = "pt",
           padding = "max_length"
         )
@@ -157,37 +184,67 @@ embedder_hf <- function(model_name,
           text_features <- text_features / text_features$norm(dim = -1L, keepdim = TRUE)
         })
 
-        # Convert to R vector
-        as.numeric(text_features$cpu()$numpy()[1, ])
+        # Convert to R
+        emb_array <- text_features$cpu()$numpy()
+
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
       }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
     } else {
-      # Text-only model (existing code)
+      # Text-only model with batching support
       model <- transformers$AutoModel$from_pretrained(model_name, cache_dir = cache_dir)
       tokenizer <- transformers$AutoTokenizer$from_pretrained(model_name, cache_dir = cache_dir)
       model$to(device)
 
-      function(x) {
-        inputs <- tokenizer(as.character(x), return_tensors = "pt", truncation = TRUE)
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Tokenize (handles both single and batch)
+        inputs <- tokenizer(as.character(x), return_tensors = "pt",
+                           truncation = TRUE, padding = TRUE)
         inputs$to(device)
 
         with(torch$no_grad(), {
           outputs <- model(inputs$input_ids, inputs$attention_mask)
 
-          # Extract embedding
+          # Extract embeddings
           if ("pooler_output" %in% names(outputs)) {
             emb_tensor <- outputs$pooler_output
           } else {
             # Use mean pooling as fallback
-            emb_tensor <- torch$mean(outputs$last_hidden_state[1], dim = 0L, keepdim = TRUE)
+            # For batch: mean pool over sequence length for each item
+            mask_expanded <- inputs$attention_mask$unsqueeze(-1L)$expand(outputs$last_hidden_state$size())
+            sum_embeddings <- torch$sum(outputs$last_hidden_state * mask_expanded, dim = 1L)
+            sum_mask <- torch$clamp(torch$sum(mask_expanded, dim = 1L), min = 1e-9)
+            emb_tensor <- sum_embeddings / sum_mask
           }
 
           # Normalize
           emb_tensor <- emb_tensor / emb_tensor$norm(dim = -1L, keepdim = TRUE)
         })
 
-        # Convert to R vector
-        as.numeric(emb_tensor$cpu()$numpy()[1, ])
+        # Convert to R
+        emb_array <- emb_tensor$cpu()$numpy()
+
+        if (is_batch) {
+          # Return list of embeddings
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          # Return single embedding
+          as.numeric(emb_array[1, ])
+        }
       }
+
+      # Mark as batch-capable
+      attr(fn, "supports_batch") <- TRUE
+      fn
     }
   } else {  # image
     if (is_siglip) {
@@ -196,10 +253,12 @@ embedder_hf <- function(model_name,
       model <- loaded$model
       processor <- loaded$processor
 
-      function(x) {
-        # Assume x is a path to an image
-        image <- PIL$Image$open(x)
-        inputs <- processor(images = list(image), return_tensors = "pt")
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Load images
+        images <- lapply(x, PIL$Image$open)
+        inputs <- processor(images = images, return_tensors = "pt")
         inputs$to(device)
 
         with(torch$no_grad(), {
@@ -208,20 +267,31 @@ embedder_hf <- function(model_name,
           image_features <- image_features / image_features$norm(dim = -1L, keepdim = TRUE)
         })
 
-        # Convert to R vector
-        as.numeric(image_features$cpu()$numpy()[1, ])
+        # Convert to R
+        emb_array <- image_features$cpu()$numpy()
+
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
       }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
     } else {
       # Image-only model (existing code)
       model <- transformers$AutoModel$from_pretrained(model_name, cache_dir = cache_dir)
       processor <- transformers$AutoImageProcessor$from_pretrained(model_name, cache_dir = cache_dir)
       model$to(device)
 
-      # And in the image-only model function section:
-      function(x) {
-        # Assume x is a path to an image
-        image <- PIL$Image$open(x)
-        inputs <- processor(images = list(image), return_tensors = "pt")
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Load images
+        images <- lapply(x, PIL$Image$open)
+        inputs <- processor(images = images, return_tensors = "pt")
         inputs$to(device)
 
         with(torch$no_grad(), {
@@ -239,9 +309,19 @@ embedder_hf <- function(model_name,
           emb_tensor <- emb_tensor / emb_tensor$norm(dim = -1L, keepdim = TRUE)
         })
 
-        # Convert to R vector
-        as.numeric(emb_tensor$cpu()$numpy()[1, ])
+        # Convert to R
+        emb_array <- emb_tensor$cpu()$numpy()
+
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
       }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
     }
   }
 }

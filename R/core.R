@@ -156,26 +156,71 @@ embed <- function(x, content_column, embedding_fn = NULL, force = FALSE, ...) {
 
   indices <- which(to_process)
 
-  # Setup progress bar
-  pb <- NULL
-  if (requireNamespace("progress", quietly = TRUE)) {
-    pb <- progress::progress_bar$new(
-      format = "Computing embeddings [:bar] :percent eta: :eta",
-      total = length(indices),
-      clear = FALSE
-    )
+  # Check if embedding function supports batching
+  supports_batch <- isTRUE(attr(fn, "supports_batch"))
+
+  if (supports_batch) {
+    # Batch processing
+    batch_size <- 32L
+    n_batches <- ceiling(length(indices) / batch_size)
+
+    # Setup progress bar
+    pb <- NULL
+    if (requireNamespace("progress", quietly = TRUE)) {
+      pb <- progress::progress_bar$new(
+        format = "Computing embeddings [:bar] :percent eta: :eta",
+        total = n_batches,
+        clear = FALSE
+      )
+    } else {
+      message("Computing embeddings for ", length(indices), " items in ", n_batches, " batches...")
+    }
+
+    # Process in batches
+    for (i in seq_len(n_batches)) {
+      start_idx <- (i - 1) * batch_size + 1
+      end_idx <- min(i * batch_size, length(indices))
+      batch_indices <- indices[start_idx:end_idx]
+
+      # Get batch of content
+      batch_content <- x[[content_column]][batch_indices]
+
+      # Process batch
+      batch_embeddings <- fn(batch_content, ...)
+
+      # Assign embeddings
+      for (j in seq_along(batch_indices)) {
+        x[[emb_col]][[batch_indices[j]]] <- batch_embeddings[[j]]
+      }
+
+      if (!is.null(pb)) pb$tick()
+    }
+
+    if (is.null(pb)) {
+      message("Done computing embeddings.")
+    }
   } else {
-    message("Computing embeddings for ", length(indices), " items...")
-  }
+    # Single-item processing (original behavior)
+    pb <- NULL
+    if (requireNamespace("progress", quietly = TRUE)) {
+      pb <- progress::progress_bar$new(
+        format = "Computing embeddings [:bar] :percent eta: :eta",
+        total = length(indices),
+        clear = FALSE
+      )
+    } else {
+      message("Computing embeddings for ", length(indices), " items...")
+    }
 
-  # Process each item
-  for (idx in indices) {
-    x[[emb_col]][[idx]] <- fn(x[[content_column]][[idx]], ...)
-    if (!is.null(pb)) pb$tick()
-  }
+    # Process each item
+    for (idx in indices) {
+      x[[emb_col]][[idx]] <- fn(x[[content_column]][[idx]], ...)
+      if (!is.null(pb)) pb$tick()
+    }
 
-  if (is.null(pb)) {
-    message("Done computing embeddings.")
+    if (is.null(pb)) {
+      message("Done computing embeddings.")
+    }
   }
 
   x
