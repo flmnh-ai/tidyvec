@@ -259,6 +259,45 @@ nearest <- function(x, query, n = 5, as_embedding = FALSE,
   result
 }
 
+#' Cluster embeddings using k-means
+#'
+#' @param x A tidyvec object
+#' @param n_clusters Number of clusters
+#' @param cluster_column Name for the cluster assignment column (default: "cluster")
+#' @return tidyvec object with cluster assignments added
+#' @export
+cluster_embeddings <- function(x, n_clusters = 5, cluster_column = "cluster") {
+  if (!inherits(x, "tidyvec")) {
+    stop("Not a tidyvec object")
+  }
+
+  emb_col <- embedding_column(x)
+
+  # Check which rows have embeddings
+  has_emb <- !vapply(x[[emb_col]], is.null, logical(1))
+
+  if (sum(has_emb) == 0) {
+    stop("No embeddings found. Run embed() first.")
+  }
+
+  if (sum(has_emb) < n_clusters) {
+    stop("Number of embeddings (", sum(has_emb), ") is less than number of clusters (", n_clusters, ")")
+  }
+
+  # Extract embeddings as matrix
+  emb_matrix <- do.call(rbind, x[[emb_col]][has_emb])
+
+  # Run k-means clustering
+  set.seed(123)  # For reproducibility
+  km <- stats::kmeans(emb_matrix, centers = n_clusters, nstart = 10)
+
+  # Add cluster column
+  x[[cluster_column]] <- NA_integer_
+  x[[cluster_column]][has_emb] <- km$cluster
+
+  x
+}
+
 # Add a helper to check collection status
 #' Print details about a tidyvec collection
 #'
