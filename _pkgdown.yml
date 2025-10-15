@@ -26,14 +26,12 @@ reference:
       - vec
       - embed
       - nearest
-      - '%~%'
       - inspect_collection
   - title: "Embedders"
     desc: "Functions for generating embeddings"
     contents:
       - embedder_tfidf
       - embedder_hf
-      - setup_python
   - title: "Visualization"
     desc: "Functions for visualizing vector spaces"
     contents:

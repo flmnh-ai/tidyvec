@@ -10,22 +10,19 @@ embedder_hf <- function(model_name,
                         modality = c("multimodal", "text", "image"),
                         device = "cpu",
                         cache_dir = NULL) {
-  if (!requireNamespace("reticulate", quietly = TRUE)) {
-    stop("Package 'reticulate' is required for HuggingFace integration")
-  }
-
   modality <- match.arg(modality)
 
   # Check if this is a SigLIP model
   is_siglip <- grepl("siglip", tolower(model_name))
   is_siglip2 <- grepl("siglip2", tolower(model_name))
 
-  # Add debug information about detected model type
-  if (is_siglip) {
-    message("SigLIP model detected: ", model_name)
-    if (is_siglip2) {
-      message("SigLIP-2 variant detected, will use max_length=64 for text")
-    }
+  # Helper to load SigLIP models
+  load_siglip_model <- function(model_name, cache_dir, device, transformers) {
+    model <- transformers$SiglipModel$from_pretrained(model_name, cache_dir = cache_dir)
+    processor <- transformers$AutoProcessor$from_pretrained(model_name, cache_dir = cache_dir)
+    model$to(device)
+    model$eval()
+    list(model = model, processor = processor)
   }
 
   # Initialize Python environment
@@ -46,14 +43,13 @@ device = '", device, "'
   if (modality == "multimodal") {
     if (is_siglip) {
       # For SigLIP models
-      model <- transformers$SiglipModel$from_pretrained(model_name, cache_dir = cache_dir)
-      processor <- transformers$AutoProcessor$from_pretrained(model_name, cache_dir = cache_dir)
-      model$to(device)
-      model$eval()  # Set to evaluation mode
+      loaded <- load_siglip_model(model_name, cache_dir, device, transformers)
+      model <- loaded$model
+      processor <- loaded$processor
 
       function(x) {
         # Detect if x is an image path or text
-        if (is.character(x) && length(x) == 1 && grepl("\\.(jpg|jpeg|png|gif|bmp)$", x)) {
+        if (is.character(x) && length(x) == 1 && file.exists(x) && !dir.exists(x)) {
           # Process as image
           image <- PIL$Image$open(x)
           inputs <- processor(images = list(image), return_tensors = "pt")
@@ -109,15 +105,16 @@ device = '", device, "'
 
       function(x) {
         # Detect if x is an image path or text
-        if (is.character(x) && length(x) == 1 && grepl("\\.(jpg|jpeg|png|gif|bmp)$", x)) {
+        if (is.character(x) && length(x) == 1 && file.exists(x) && !dir.exists(x)) {
           # Process as image
           image <- PIL$Image$open(x)
           inputs <- processor(images = list(image), return_tensors = "pt")
           inputs$to(device)
 
           with(torch$no_grad(), {
-            # Use direct attribute access instead of ** unpacking
             outputs <- model$get_image_features(inputs$pixel_values)
+            # Normalize embeddings
+            outputs <- outputs / outputs$norm(dim = -1L, keepdim = TRUE)
           })
         } else {
           # Process as text
@@ -125,24 +122,23 @@ device = '", device, "'
           inputs$to(device)
 
           with(torch$no_grad(), {
-            # Use direct attribute access instead of ** unpacking
             outputs <- model$get_text_features(inputs$input_ids)
+            # Normalize embeddings
+            outputs <- outputs / outputs$norm(dim = -1L, keepdim = TRUE)
           })
         }
 
-        # Convert to R vector and normalize
-        emb <- as.numeric(outputs$cpu()$numpy()[1, ])
-        emb / sqrt(sum(emb^2))  # L2 normalization
+        # Convert to R vector
+        as.numeric(outputs$cpu()$numpy()[1, ])
       }
     }
   } else if (modality == "text") {
     # Text-only model
     if (is_siglip) {
       # For SigLIP models with text-only usage
-      model <- transformers$SiglipModel$from_pretrained(model_name, cache_dir = cache_dir)
-      processor <- transformers$AutoProcessor$from_pretrained(model_name, cache_dir = cache_dir)
-      model$to(device)
-      model$eval()
+      loaded <- load_siglip_model(model_name, cache_dir, device, transformers)
+      model <- loaded$model
+      processor <- loaded$processor
 
       function(x) {
         text_kwargs <- list(
@@ -184,29 +180,30 @@ device = '", device, "'
         inputs$to(device)
 
         with(torch$no_grad(), {
-          # Replace py_call_object with direct method call
           outputs <- model(inputs$input_ids, inputs$attention_mask)
+
+          # Extract embedding
+          if ("pooler_output" %in% names(outputs)) {
+            emb_tensor <- outputs$pooler_output
+          } else {
+            # Use mean pooling as fallback
+            emb_tensor <- torch$mean(outputs$last_hidden_state[1], dim = 0L, keepdim = TRUE)
+          }
+
+          # Normalize
+          emb_tensor <- emb_tensor / emb_tensor$norm(dim = -1L, keepdim = TRUE)
         })
 
-        # Rest of the function remains the same
-        if ("pooler_output" %in% names(outputs)) {
-          emb <- as.numeric(outputs$pooler_output$cpu()$numpy()[1, ])
-        } else {
-          # Use mean pooling as fallback
-          emb <- as.numeric(torch$mean(outputs$last_hidden_state[1], dim = 0L)$cpu()$numpy())
-        }
-
-        # Normalize
-        emb / sqrt(sum(emb^2))
+        # Convert to R vector
+        as.numeric(emb_tensor$cpu()$numpy()[1, ])
       }
     }
   } else {  # image
     if (is_siglip) {
       # SigLIP image-only model
-      model <- transformers$SiglipModel$from_pretrained(model_name, cache_dir = cache_dir)
-      processor <- transformers$AutoProcessor$from_pretrained(model_name, cache_dir = cache_dir)
-      model$to(device)
-      model$eval()
+      loaded <- load_siglip_model(model_name, cache_dir, device, transformers)
+      model <- loaded$model
+      processor <- loaded$processor
 
       function(x) {
         # Assume x is a path to an image
@@ -237,20 +234,22 @@ device = '", device, "'
         inputs$to(device)
 
         with(torch$no_grad(), {
-          # Replace py_call_object with direct method call
           outputs <- model(inputs$pixel_values)
+
+          # Extract embedding
+          if ("pooler_output" %in% names(outputs)) {
+            emb_tensor <- outputs$pooler_output
+          } else {
+            # Use global average pooling as fallback
+            emb_tensor <- torch$mean(outputs$last_hidden_state, dims = c(1L, 2L), keepdim = TRUE)
+          }
+
+          # Normalize
+          emb_tensor <- emb_tensor / emb_tensor$norm(dim = -1L, keepdim = TRUE)
         })
 
-        # Extract embedding
-        if ("pooler_output" %in% names(outputs)) {
-          emb <- as.numeric(outputs$pooler_output$cpu()$numpy()[1, ])
-        } else {
-          # Use global average pooling as fallback
-          emb <- as.numeric(torch$mean(outputs$last_hidden_state, dims = c(1L, 2L))$cpu()$numpy()[1, ])
-        }
-
-        # Normalize
-        emb / sqrt(sum(emb^2))
+        # Convert to R vector
+        as.numeric(emb_tensor$cpu()$numpy()[1, ])
       }
     }
   }
@@ -293,44 +292,4 @@ embedder_tfidf <- function(corpus, min_freq = 2) {
     tfidf_vec <- tfidf$transform(dtm_new)
     as.numeric(tfidf_vec[1, ])
   }
-}
-
-#' Setup Python environment for TidyVec
-#'
-#' @param method Method for environment creation, either "virtualenv" or "conda"
-#' @param envname Name of the environment to create
-#' @param packages Additional packages to install
-#' @return Invisible TRUE if successful
-#' @export
-setup_python <- function(method = c("virtualenv", "conda"),
-                         envname = "tidyvec_env",
-                         packages = c("torch", "transformers", "pillow", "sentencepiece", "protobuf", "numpy")) {
-  method <- match.arg(method)
-
-  if (!requireNamespace("reticulate", quietly = TRUE)) {
-    stop("Package 'reticulate' is required")
-  }
-
-  if (method == "virtualenv") {
-    if (!reticulate::virtualenv_exists(envname)) {
-      message("Creating virtual environment '", envname, "'...")
-      reticulate::virtualenv_create(envname)
-      message("Installing required packages (this may take a while)...")
-      reticulate::py_install(packages, envname = envname)
-    }
-    reticulate::use_virtualenv(envname)
-  } else {
-    # Conda method
-    envs <- reticulate::conda_list()
-    if (!envname %in% envs$name) {
-      message("Creating conda environment '", envname, "'...")
-      reticulate::conda_create(envname)
-      message("Installing required packages (this may take a while)...")
-      reticulate::conda_install(envname, packages)
-    }
-    reticulate::use_condaenv(envname)
-  }
-
-  message("Python environment setup complete. Using ", reticulate::py_config()$python)
-  invisible(TRUE)
 }

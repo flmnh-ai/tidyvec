@@ -35,12 +35,7 @@ You can install tidyvec from GitHub:
 remotes::install_github("flmnh-ai/tidyvec")
 ```
 
-For neural embedding models via HuggingFace, you'll also need Python with the required dependencies:
-
-```r
-# Set up Python environment with required packages
-tidyvec::setup_python()
-```
+For neural embedding models via HuggingFace, Python dependencies (torch, transformers, pillow, etc.) will be automatically provisioned in an ephemeral virtual environment on first use of `embedder_hf()`.
 
 ## Basic Usage
 

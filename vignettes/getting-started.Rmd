@@ -150,12 +150,9 @@ books_vec %>%
 
 TidyVec excels at working with multimodal data, including images. For this, we typically use neural embedding models like CLIP via HuggingFace.
 
-> Note: Using neural embedders requires Python and some dependencies. Run `setup_python()` to set up the required environment.
+> Note: Python dependencies (torch, transformers, etc.) are automatically provisioned on first use of `embedder_hf()`.
 
 ```{r eval=FALSE}
-# Set up the Python environment
-setup_python()
-
 # Create a CLIP embedder
 clip_embedder <- embedder_hf("openai/clip-vit-base-patch32", modality = "multimodal")
 
