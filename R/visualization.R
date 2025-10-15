@@ -172,47 +172,32 @@ viz_images <- function(x,
 
     label <- if (length(label_parts) > 0) paste(label_parts, collapse = "\n") else NULL
 
-    # Try to read the image
-    tryCatch({
-      # Read image
-      img <- magick::image_read(x[[path_column]][i])
+    # Read image
+    img <- magick::image_read(x[[path_column]][i])
 
-      # Resize to maintain aspect ratio within width
-      img <- magick::image_scale(img, paste0(width, "x"))
+    # Resize to maintain aspect ratio within width
+    img <- magick::image_scale(img, paste0(width, "x"))
 
-      # Add label if available
-      if (!is.null(label)) {
-        # Create a label image
-        label_img <- magick::image_blank(width, 50, "white")
-        label_img <- magick::image_annotate(
-          label_img,
-          label,
-          size = 10,
-          gravity = "northwest",
-          color = "black"
-        )
-
-        # Stack image and label
-        img <- magick::image_append(
-          c(img, label_img),
-          stack = TRUE
-        )
-      }
-
-      images[[i]] <- img
-    }, error = function(e) {
-      warning("Failed to load image: ", x[[path_column]][i], " (", e$message, ")")
-      # Create a placeholder for failed images
-      img <- magick::image_blank(width, width, "lightgray")
-      img <- magick::image_annotate(
-        img,
-        paste("Failed to load:", basename(x[[path_column]][i])),
-        size = 12,
-        gravity = "center",
-        color = "red"
+    # Add label if available
+    if (!is.null(label)) {
+      # Create a label image
+      label_img <- magick::image_blank(width, 50, "white")
+      label_img <- magick::image_annotate(
+        label_img,
+        label,
+        size = 10,
+        gravity = "northwest",
+        color = "black"
       )
-      images[[i]] <- img
-    })
+
+      # Stack image and label
+      img <- magick::image_append(
+        c(img, label_img),
+        stack = TRUE
+      )
+    }
+
+    images[[i]] <- img
   }
 
   # Arrange images in a grid
