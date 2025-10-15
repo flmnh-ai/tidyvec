@@ -138,8 +138,8 @@
 <span>  <span class="fu"><a href="reference/vec.html">vec</a></span><span class="op">(</span>embedding_fn <span class="op">=</span> <span class="va">embedder</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="reference/embed.html">embed</a></span><span class="op">(</span>content_column <span class="op">=</span> <span class="st">"description"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Find similar books using the `%~%` operator</span></span>
-<span><span class="st">"data visualization techniques"</span> <span class="op"><a href="reference/grapes-twiddle-grapes.html">%~%</a></span> <span class="va">books_vec</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span><span class="co"># Find similar books</span></span>
+<span><span class="fu"><a href="reference/nearest.html">nearest</a></span><span class="op">(</span><span class="va">books_vec</span>, <span class="st">"data visualization techniques"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">title</span>, <span class="va">similarity</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -168,11 +168,11 @@
 <span>  <span class="fu"><a href="reference/embed.html">embed</a></span><span class="op">(</span>content_column <span class="op">=</span> <span class="st">"path"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Find images similar to text</span></span>
-<span><span class="st">"a cat playing"</span> <span class="op"><a href="reference/grapes-twiddle-grapes.html">%~%</a></span> <span class="va">images</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span><span class="fu"><a href="reference/nearest.html">nearest</a></span><span class="op">(</span><span class="va">images</span>, <span class="st">"a cat playing"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, <span class="va">path</span>, <span class="va">similarity</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Find similar images and visualize them</span></span>
-<span><span class="st">"a dog on a beach"</span> <span class="op"><a href="reference/grapes-twiddle-grapes.html">%~%</a></span> <span class="va">images</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span><span class="fu"><a href="reference/nearest.html">nearest</a></span><span class="op">(</span><span class="va">images</span>, <span class="st">"a dog on a beach"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="reference/viz_images.html">viz_images</a></span><span class="op">(</span>path_column <span class="op">=</span> <span class="st">"path"</span>, label_columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"category"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
@@ -210,14 +210,10 @@
 <div class="section level3">
 <h3 id="similarity-search">Similarity Search<a class="anchor" aria-label="anchor" href="#similarity-search"></a>
 </h3>
-<p>Find similar items with the <code><a href="reference/nearest.html">nearest()</a></code> function or <code>%~%</code> operator:</p>
+<p>Find similar items with the <code><a href="reference/nearest.html">nearest()</a></code> function:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Find nearest neighbors</span></span>
-<span><span class="va">my_collection</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="reference/nearest.html">nearest</a></span><span class="op">(</span><span class="st">"query text"</span>, n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Or using the similarity operator</span></span>
-<span><span class="st">"query text"</span> <span class="op"><a href="reference/grapes-twiddle-grapes.html">%~%</a></span> <span class="va">my_collection</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/nearest.html">nearest</a></span><span class="op">(</span><span class="va">my_collection</span>, <span class="st">"query text"</span>, n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="embedding-visualization">Embedding Visualization<a class="anchor" aria-label="anchor" href="#embedding-visualization"></a>
