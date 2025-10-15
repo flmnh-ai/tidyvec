@@ -189,11 +189,13 @@ embed <- function(x, content_column, embedding_fn = NULL, force = FALSE, ...) {
 #' @param as_embedding Whether the query is already an embedding vector
 #' @param method Similarity method ("cosine", "euclidean", "dot")
 #' @param min_score Minimum similarity score
+#' @param keyword_weight Weight for keyword matching (0-1, default 0 for pure vector search)
+#' @param keyword_column Column to search for keywords (required if keyword_weight > 0)
 #' @return Filtered tidyvec object with similarity scores
 #' @export
 nearest <- function(x, query, n = 5, as_embedding = FALSE,
                     method = c("cosine", "euclidean", "dot"),
-                    min_score = 0) {
+                    min_score = 0, keyword_weight = 0, keyword_column = NULL) {
   if (!inherits(x, "tidyvec")) {
     stop("Not a tidyvec object")
   }
@@ -236,12 +238,33 @@ nearest <- function(x, query, n = 5, as_embedding = FALSE,
     return(x[0, ])
   }
 
-  # Calculate similarities
+  # Calculate vector similarities
   similarities <- numeric(nrow(x))
   for (i in seq_len(nrow(x))) {
     if (has_embedding[i]) {
       similarities[i] <- sim_fn(x[[emb_col]][[i]], query_embedding)
     }
+  }
+
+  # Add keyword scoring if requested
+  if (keyword_weight > 0) {
+    if (is.null(keyword_column) || !keyword_column %in% names(x)) {
+      stop("keyword_column must be specified and exist when keyword_weight > 0")
+    }
+
+    # Simple keyword scoring: proportion of query terms found in text
+    query_terms <- tolower(strsplit(as.character(query), "\\s+")[[1]])
+    query_terms <- query_terms[nchar(query_terms) > 0]  # Remove empty strings
+
+    keyword_scores <- vapply(x[[keyword_column]], function(text) {
+      if (is.na(text) || is.null(text)) return(0)
+      text_terms <- tolower(strsplit(as.character(text), "\\s+")[[1]])
+      if (length(query_terms) == 0) return(0)
+      sum(query_terms %in% text_terms) / length(query_terms)
+    }, numeric(1))
+
+    # Combine scores: weighted average
+    similarities <- (1 - keyword_weight) * similarities + keyword_weight * keyword_scores
   }
 
   # Add similarity column
