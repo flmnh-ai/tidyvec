@@ -320,32 +320,14 @@ setup_python <- function(method = c("virtualenv", "conda"),
     }
     reticulate::use_virtualenv(envname)
   } else {
-    # Check if conda is available more safely
-    conda_available <- tryCatch({
-      reticulate::py_run_string("import conda")
-      TRUE
-    }, error = function(e) FALSE)
-
-    if (!conda_available) {
-      message("Installing miniconda...")
-      reticulate::install_miniconda()
-    }
-
-    # Check if conda environment exists more safely
-    conda_env_exists <- function(envname) {
-      tryCatch({
-        envs <- reticulate::conda_list()
-        envname %in% envs$name
-      }, error = function(e) FALSE)
-    }
-
-    if (!conda_env_exists(envname)) {
+    # Conda method
+    envs <- reticulate::conda_list()
+    if (!envname %in% envs$name) {
       message("Creating conda environment '", envname, "'...")
       reticulate::conda_create(envname)
       message("Installing required packages (this may take a while)...")
       reticulate::conda_install(envname, packages)
     }
-
     reticulate::use_condaenv(envname)
   }
 
