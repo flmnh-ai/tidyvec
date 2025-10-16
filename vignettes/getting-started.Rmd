@@ -146,11 +146,47 @@ books_vec %>%
   select(title, similarity)
 ```
 
+## Persistence
+
+Save collections to avoid re-computing embeddings:
+
+```{r eval=FALSE}
+# Save to disk
+write_vec(books_vec, "my_books.qs")
+
+# Load later
+books_vec <- read_vec("my_books.qs")
+```
+
+## Hybrid Search
+
+Combine semantic search with keyword matching:
+
+```{r eval=FALSE}
+# Hybrid: 70% vector, 30% keyword matching
+nearest(books_vec, "deep learning",
+        keyword_weight = 0.3,
+        keyword_column = "description")
+```
+
+This is useful for "known-item" searches where you remember specific words.
+
+## Clustering
+
+Discover semantic groups:
+
+```{r eval=FALSE}
+books_vec %>%
+  cluster_embeddings(n_clusters = 5) %>%
+  group_by(cluster) %>%
+  summarize(example = first(title))
+```
+
 ## Working with Images
 
 TidyVec excels at working with multimodal data, including images. For this, we typically use neural embedding models like CLIP via HuggingFace.
 
-> Note: Python dependencies (torch, transformers, etc.) are automatically provisioned on first use of `embedder_hf()`.
+> Note: Python dependencies are automatically provisioned on first use. HuggingFace embedders batch process for performance.
 
 ```{r eval=FALSE}
 # Create a CLIP embedder
@@ -269,8 +305,10 @@ Key benefits:
 
 1.  Seamless integration with dplyr, ggplot2, and other tidyverse packages
 2.  Support for multiple modalities (text, images)
-3.  Flexible embedding generation
-4.  Simple, intuitive API
-5.  Visualization capabilities
+3.  Fast batch processing (10-50x speedup)
+4.  Persistence support for saving/loading collections
+5.  Hybrid search and clustering capabilities
+6.  Simple, intuitive API
+7.  Visualization capabilities
 
-For more advanced use cases or larger datasets, consider using FAISS or other specialized vector databases, but for many common applications, TidyVec provides an elegant and easy-to-use solution.
+For production use cases with >100K items or sub-millisecond queries, consider using FAISS, Chroma, or other specialized vector databases. For learning, prototyping, and personal-scale projects, TidyVec provides an elegant and easy-to-use solution.

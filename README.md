@@ -125,7 +125,7 @@ my_collection <- tibble(text = c("sample text", "another example")) %>%
 
 ### Embedding Generation
 
-Generate embeddings using built-in or custom embedding functions:
+Generate embeddings using built-in or custom embedding functions. HuggingFace embedders automatically batch process for 10-50x speedup:
 
 ```r
 # TF-IDF embeddings
@@ -133,7 +133,7 @@ documents <- tibble(text = c("sample text", "another example")) %>%
   vec(embedding_fn = embedder_tfidf(.$text)) %>%
   embed(content_column = "text")
 
-# HuggingFace neural embeddings
+# HuggingFace neural embeddings (automatic batching)
 comments <- tibble(text = c("I love this product", "Terrible experience")) %>%
   vec(embedding_fn = embedder_hf("sentence-transformers/all-MiniLM-L6-v2")) %>%
   embed(content_column = "text")
@@ -155,6 +155,40 @@ Visualize your embedding space:
 ```r
 my_collection %>%
   viz_embeddings(method = "umap", labels = "id", color = "category")
+```
+
+### Persistence
+
+Save and load collections to avoid re-computing embeddings:
+
+```r
+# Save collection to disk
+write_vec(books_vec, "books_collection.qs")
+
+# Load later
+books_vec <- read_vec("books_collection.qs")
+```
+
+### Hybrid Search
+
+Combine vector similarity with keyword matching:
+
+```r
+# 70% vector similarity, 30% keyword matching
+nearest(books_vec, "machine learning",
+        keyword_weight = 0.3,
+        keyword_column = "description")
+```
+
+### Semantic Clustering
+
+Discover groups in your data:
+
+```r
+books_vec %>%
+  cluster_embeddings(n_clusters = 3) %>%
+  group_by(cluster) %>%
+  summarize(theme = first(title))
 ```
 
 ## Advanced Examples
