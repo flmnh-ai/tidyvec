@@ -27,6 +27,9 @@ reference:
       - embed
       - nearest
       - inspect_collection
+      - write_vec
+      - read_vec
+      - cluster_embeddings
   - title: "Embedders"
     desc: "Functions for generating embeddings"
     contents:
