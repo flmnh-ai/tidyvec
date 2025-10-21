@@ -12,6 +12,12 @@ embedder_hf <- function(model_name,
                         cache_dir = NULL) {
   modality <- match.arg(modality)
 
+  # Validate device
+  valid_devices <- c("cpu", "cuda", "mps")
+  if (!device %in% valid_devices) {
+    stop("Invalid device '", device, "'. Must be one of: ", paste(valid_devices, collapse = ", "))
+  }
+
   # Check if this is a SigLIP model
   is_siglip <- grepl("siglip", tolower(model_name))
   is_siglip2 <- grepl("siglip2", tolower(model_name))
@@ -30,6 +36,16 @@ embedder_hf <- function(model_name,
   torch <- reticulate::import("torch")
   PIL <- reticulate::import("PIL")
 
+  # Helper to load images with better error messages
+  load_image <- function(path) {
+    tryCatch(
+      PIL$Image$open(path),
+      error = function(e) {
+        stop("Failed to open image at path: ", path, "\n  Error: ", conditionMessage(e))
+      }
+    )
+  }
+
   # Setup model based on modality
   if (modality == "multimodal") {
     if (is_siglip) {
@@ -46,7 +62,7 @@ embedder_hf <- function(model_name,
 
         if (is_image) {
           # Process as images
-          images <- lapply(x, PIL$Image$open)
+          images <- lapply(x, load_image)
           inputs <- processor(images = images, return_tensors = "pt")
           inputs$to(device)
 
@@ -104,6 +120,7 @@ embedder_hf <- function(model_name,
       model <- transformers$CLIPModel$from_pretrained(model_name, cache_dir = cache_dir)
       processor <- transformers$CLIPProcessor$from_pretrained(model_name, cache_dir = cache_dir)
       model$to(device)
+      model$eval()
 
       fn <- function(x) {
         is_batch <- length(x) > 1
@@ -113,7 +130,7 @@ embedder_hf <- function(model_name,
 
         if (is_image) {
           # Process as images
-          images <- lapply(x, PIL$Image$open)
+          images <- lapply(x, load_image)
           inputs <- processor(images = images, return_tensors = "pt")
           inputs$to(device)
 
@@ -198,10 +215,11 @@ embedder_hf <- function(model_name,
       attr(fn, "supports_batch") <- TRUE
       fn
     } else {
-      # Text-only model with batching support
+      # Text-only model (existing code)
       model <- transformers$AutoModel$from_pretrained(model_name, cache_dir = cache_dir)
       tokenizer <- transformers$AutoTokenizer$from_pretrained(model_name, cache_dir = cache_dir)
       model$to(device)
+      model$eval()
 
       fn <- function(x) {
         is_batch <- length(x) > 1
@@ -257,7 +275,7 @@ embedder_hf <- function(model_name,
         is_batch <- length(x) > 1
 
         # Load images
-        images <- lapply(x, PIL$Image$open)
+        images <- lapply(x, load_image)
         inputs <- processor(images = images, return_tensors = "pt")
         inputs$to(device)
 
@@ -280,17 +298,109 @@ embedder_hf <- function(model_name,
 
       attr(fn, "supports_batch") <- TRUE
       fn
-    } else {
-      # Image-only model (existing code)
-      model <- transformers$AutoModel$from_pretrained(model_name, cache_dir = cache_dir)
+    } else if (is_dinov2) {
+      # DINOv2-specific image model
+      model <- transformers$AutoModel$from_pretrained(
+        model_name,
+        cache_dir = cache_dir,
+        trust_remote_code = TRUE  # Required for DINOv2
+      )
       processor <- transformers$AutoImageProcessor$from_pretrained(model_name, cache_dir = cache_dir)
       model$to(device)
+      model$eval()
 
       fn <- function(x) {
         is_batch <- length(x) > 1
 
         # Load images
-        images <- lapply(x, PIL$Image$open)
+        images <- lapply(x, load_image)
+        inputs <- processor(images = images, return_tensors = "pt")
+        inputs$to(device)
+
+        with(torch$no_grad(), {
+          outputs <- model(inputs$pixel_values)
+          features <- outputs$last_hidden_state
+          # Mean pool over sequence dimension only (dim 1)
+          features <- torch$mean(features, dim = 1L)
+          # Normalize embeddings
+          features <- features / features$norm(dim = -1L, keepdim = TRUE)
+        })
+
+        # Convert to R
+        emb_array <- features$cpu()$numpy()
+
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
+      }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
+    } else if (is_aimv2) {
+      # AIMv2-specific image model
+      model <- transformers$AutoModel$from_pretrained(
+        model_name,
+        cache_dir = cache_dir,
+        trust_remote_code = TRUE  # Required for AIMv2
+      )
+      processor <- transformers$AutoProcessor$from_pretrained(
+        model_name,
+        cache_dir = cache_dir,
+        trust_remote_code = TRUE  # Required for AIMv2
+      )
+      model$to(device)
+      model$eval()
+
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Load images
+        images <- lapply(x, load_image)
+        inputs <- processor(images = images, return_tensors = "pt")
+        inputs$to(device)
+
+        with(torch$no_grad(), {
+          # Check if model has get_image_features method
+          if (reticulate::py_has_attr(model, "get_image_features")) {
+            image_features <- model$get_image_features(inputs$pixel_values)
+          } else {
+            # Fallback to forward pass - pass all inputs
+            outputs <- do.call(model, inputs)
+            image_features <- torch$mean(outputs$last_hidden_state, dim = 1L)
+          }
+
+          # Normalize embeddings
+          image_features <- image_features / image_features$norm(dim = -1L, keepdim = TRUE)
+        })
+
+        # Convert to R
+        emb_array <- image_features$cpu()$numpy()
+
+        # Return batch or single
+        if (is_batch) {
+          lapply(seq_len(nrow(emb_array)), function(i) as.numeric(emb_array[i, ]))
+        } else {
+          as.numeric(emb_array[1, ])
+        }
+      }
+
+      attr(fn, "supports_batch") <- TRUE
+      fn
+    } else {
+      # Image-only model (generic fallback)
+      model <- transformers$AutoModel$from_pretrained(model_name, cache_dir = cache_dir)
+      processor <- transformers$AutoImageProcessor$from_pretrained(model_name, cache_dir = cache_dir)
+      model$to(device)
+      model$eval()
+
+      fn <- function(x) {
+        is_batch <- length(x) > 1
+
+        # Load images
+        images <- lapply(x, load_image)
         inputs <- processor(images = images, return_tensors = "pt")
         inputs$to(device)
 
