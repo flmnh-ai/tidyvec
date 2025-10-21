@@ -9,6 +9,11 @@ vec <- function(x, embedding_column = "embedding", embedding_fn = NULL) {
   # Ensure x is a tibble
   x <- tibble::as_tibble(x)
 
+  # Validate embedding_fn if provided
+  if (!is.null(embedding_fn) && !is.function(embedding_fn)) {
+    stop("embedding_fn must be a function, not ", class(embedding_fn)[1])
+  }
+
   # Ensure embedding column exists
   if (!embedding_column %in% names(x)) {
     # Create a list of NULL values with the same length as the number of rows in x
@@ -132,15 +137,21 @@ embed <- function(x, content_column, embedding_fn = NULL, force = FALSE, ...) {
   # Get embedding column
   emb_col <- embedding_column(x)
 
+  # Validate embedding column exists
+  if (!emb_col %in% names(x)) {
+    stop("Embedding column '", emb_col, "' not found in data. This should not happen - please report as a bug.")
+  }
+
   # Get embedding function
   fn <- embedding_fn %||% embedding_fn(x)
   if (is.null(fn)) {
-    stop("No embedding function provided")
+    stop("No embedding function provided. Did you forget to pass embedding_fn to vec()?")
   }
 
   # Ensure content column exists
   if (missing(content_column) || !content_column %in% names(x)) {
-    stop("Content column not found")
+    stop("Content column '", if(!missing(content_column)) content_column else "[not specified]",
+         "' not found in data. Available columns: ", paste(names(x), collapse = ", "))
   }
 
   # Identify rows to process (missing or force)
@@ -252,7 +263,7 @@ nearest <- function(x, query, n = 5, as_embedding = FALSE,
   if (!as_embedding) {
     fn <- embedding_fn(x)
     if (is.null(fn)) {
-      stop("No embedding function available to process query")
+      stop("No embedding function available to process query. Did you forget to pass embedding_fn to vec()?")
     }
     query_embedding <- fn(query)
   } else {
