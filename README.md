@@ -12,9 +12,10 @@
 tidyvec is a lightweight vector database for the tidyverse ecosystem. It enables you to:
 
 - Store and query vector embeddings alongside your data in tibbles
-- Generate embeddings for text and images
+- Generate embeddings for text and images using HuggingFace models
 - Find similar items using vector similarity search
-- Visualize embedding spaces
+- Evaluate retrieval quality with standard IR metrics (MAP, AP@k, Precision, Recall)
+- Visualize embedding spaces with UMAP/t-SNE
 - Seamlessly integrate with dplyr, ggplot2, and other tidyverse packages
 
 ## Why tidyvec?
@@ -189,6 +190,33 @@ books_vec %>%
   cluster_embeddings(n_clusters = 3) %>%
   group_by(cluster) %>%
   summarize(theme = first(title))
+```
+
+### Retrieval Evaluation
+
+Evaluate how well your embeddings capture semantic similarity:
+
+```r
+# Calculate Mean Average Precision for a single variable
+map_score <- calculate_map(books_vec, "category", k = 10)
+
+# Compare to random baseline
+baseline <- calculate_baseline(books_vec, "category")
+improvement <- map_score - baseline
+
+# Evaluate multiple variables at once
+results <- evaluate_retrieval(
+  books_vec,
+  variables = c("category", "genre", "author"),
+  k = 25
+)
+
+# Calculate metrics for a specific query
+relevant_ids <- books_vec %>% filter(genre == "sci-fi") %>% pull(id)
+retrieved_ids <- nearest(books_vec, "space exploration", n = 20) %>% pull(id)
+
+metrics <- query_metrics(relevant_ids, retrieved_ids, k = 20)
+# Returns: ap, precision, recall
 ```
 
 ## Advanced Examples

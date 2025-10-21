@@ -71,13 +71,14 @@ tidyvec (extends tibble)
 
 1. **Closure-based embedders**: Embedding functions are closures that capture state (e.g., vocabulary for TF-IDF)
 2. **Attribute preservation**: The `[.tidyvec` S3 method ensures metadata survives subsetting
-3. **Sequential processing**: `embed()` processes items with progress tracking
+3. **Batch processing**: All HuggingFace embedders support batching (10-50x speedup) via `supports_batch` attribute. `embed()` processes in batches of 32 items by default.
 4. **Lazy evaluation**: Embeddings are NULL until `embed()` is explicitly called
-5. **HuggingFace integration**: `embedder_hf()` auto-detects CLIP/SigLIP models and supports multiple devices (cpu, cuda, mps)
+5. **HuggingFace integration**: `embedder_hf()` auto-detects CLIP/SigLIP/DINOv2/AIMv2 models and supports multiple devices (cpu, cuda, mps)
 6. **Auto-provisioned Python**: Python dependencies are declared in `.onLoad()` and auto-provisioned via reticulate's ephemeral venv
-7. **Automatic batching**: HuggingFace embedders support batching (10-50x speedup) via `supports_batch` attribute
-8. **Hybrid search**: `nearest()` combines semantic + keyword matching with configurable weights
-9. **Persistence**: `write_vec()`/`read_vec()` use qs package for fast save/load
+7. **Environment variables**: Sets `TOKENIZERS_PARALLELISM=false` (avoid fork warnings) and `PYTORCH_ENABLE_MPS_FALLBACK=1` (macOS GPU stability) in `.onLoad()`
+8. **Model evaluation mode**: All PyTorch models are set to evaluation mode (`model$eval()`) for deterministic inference
+9. **Hybrid search**: `nearest()` combines semantic + keyword matching with configurable weights
+10. **Persistence**: `write_vec()`/`read_vec()` use qs package for fast save/load
 
 ### Dependencies
 
@@ -108,9 +109,12 @@ All exported functions must have roxygen2 documentation with:
 
 ### Vignettes
 
-Main vignette: `vignettes/getting-started.Rmd`
+- `vignettes/getting-started.Rmd`: Tutorial covering installation, creating collections, embedding generation (TF-IDF and neural), similarity search, tidyverse integration, image embeddings, persistence, hybrid search, clustering, and RAG use cases
+- `vignettes/philosophy.Rmd`: Explains tidyvec's design philosophy, niche (learning/prototyping/personal-scale), and why the tidyverse integration matters
 
-Covers installation, creating collections, embedding generation (TF-IDF and neural), similarity search, tidyverse integration, image embeddings, and RAG use cases.
+### Pkgdown Configuration
+
+The `_pkgdown.yml` file controls the documentation site structure. When adding new exported functions, manually add them to the `reference:` section. When adding new vignettes, manually add them to the `navbar: > components: > articles:` menu. These are UX decisions that `devtools::document()` cannot infer from code.
 
 ## Testing
 
