@@ -1,0 +1,198 @@
+---
+title: "Analyzing the Florida Museum Historic Ceramic Type Collection"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(tidyvec)
+library(here)
+```
+
+## Embeddings
+```{r}
+# Create a siglip embedder (Python dependencies auto-provisioned on first use)
+siglip_embedder <- embedder_hf("google/siglip-so400m-patch14-224",
+                             modality = "multimodal",
+                             device = 'mps')
+
+# Get paths to example images included with the package
+img_paths <- list.files('../../ceramic-explorer/data/data-derived/image_front_clean',
+                        full.names = TRUE)
+
+# Load metadata
+metadata <- read_tsv(here('../ceramic-explorer/data/data-raw/histarch_photos.tsv'),
+                     show_col_types = FALSE) %>%
+  select(PhotoID, specimen_no, ceramic_category, type_name,
+         glaze, surface_decoration, production_origin,
+         vessel_forms, rim_forms, base_forms, motif_1, background_color) %>%
+  mutate(across(everything(), tolower),
+         PhotoID = as.numeric(PhotoID))
+
+# Create an image collection with metadata
+images <- tibble(
+  id = parse_number(str_split_i(img_paths, "/", 7)),
+  path = img_paths) %>%
+  left_join(metadata, by = c("id" = "PhotoID")) %>%
+  vec(embedding_fn = siglip_embedder) %>%
+  embed(content_column = "path")
+```
+
+## Explore the Collection
+
+```{r}
+# Collection composition
+cat("Total ceramics:", nrow(images), "\n")
+cat("Unique ceramic categories:", n_distinct(images$ceramic_category), "\n")
+cat("Unique production origins:", n_distinct(images$production_origin), "\n")
+```
+
+```{r}
+# Distribution of ceramic categories
+images %>%
+  count(ceramic_category, sort = TRUE) %>%
+  filter(!is.na(ceramic_category), ceramic_category != "null") %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(ceramic_category, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Ceramic Categories",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Distribution of production origins
+images %>%
+  count(production_origin, sort = TRUE) %>%
+  filter(!is.na(production_origin), production_origin != "null") %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(production_origin, n), y = n)) +
+  geom_col(fill = "coral") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Production Origins",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_minimal()
+```
+
+## Visualize Embedding Space
+
+```{r}
+# Visualize our image embeddings colored by category
+viz_embeddings(images,
+               method = "umap",
+               color = "ceramic_category") +
+  labs(title = "Ceramic Embeddings in 2D Space",
+       subtitle = "Colored by ceramic category")
+```
+
+```{r}
+write_vec(images, 'flmnh_histarch.qs')
+```
+
+## Load Collection from Disk
+
+When loading a saved collection, you can optionally restore the embedding function
+if you need to query with new text or images.
+
+```{r}
+# Load without embedding function (for analysis with existing embeddings)
+images <- read_vec('flmnh_histarch.qs')
+
+# Or load WITH embedding function (for querying with new text/images)
+images <- read_vec('flmnh_histarch.qs', embedding_fn = siglip_embedder)
+```
+
+## Semantic Search Examples
+
+Multimodal models enable searching with natural language descriptions.
+
+```{r}
+# Search for blue and white decorated ceramics
+nearest(images, "blue and white decorated pottery", n = 9) |>
+  viz_images(path_column = "path",
+             label_columns = c("id", "ceramic_category", "production_origin"))
+```
+
+```{r}
+# Search for glazed pottery
+nearest(images, "glazed ceramic pottery", n = 9) |>
+  viz_images(path_column = "path",
+             label_columns = c("id", "glaze", "ceramic_category"))
+```
+
+```{r}
+# Search for Spanish colonial majolica
+nearest(images, "spanish colonial majolica pottery", n = 9) |>
+  viz_images(path_column = "path",
+             label_columns = c("id", "ceramic_category", "production_origin"))
+```
+
+## Evaluate Retrieval Quality
+
+Use tidyvec's evaluation metrics to measure how well embeddings capture ceramic similarity.
+
+```{r}
+# Calculate MAP for ceramic_category
+map_score <- calculate_map(images, "ceramic_category", k = 25)
+baseline <- calculate_baseline(images, "ceramic_category")
+
+cat("Mean Average Precision (ceramic_category):", round(map_score, 3), "\n")
+cat("Baseline (random retrieval):", round(baseline, 3), "\n")
+cat("Improvement over baseline:", round((map_score - baseline) / baseline * 100, 1), "%\n")
+```
+
+```{r}
+# Evaluate multiple variables
+eval_results <- evaluate_retrieval(
+  images,
+  variables = c("ceramic_category", "production_origin", "glaze"),
+  k = 25
+)
+
+eval_results |>
+  arrange(desc(map)) |>
+  mutate(
+    improvement = (map - baseline) / baseline * 100
+  ) |>
+  select(variable, map, baseline, improvement)
+```
+
+## Tidyverse Integration
+
+tidyvec works seamlessly with dplyr and other tidyverse tools.
+
+```{r}
+# Filter to majolica, then search within that subset
+images |>
+  filter(ceramic_category == "majolica") |>
+  nearest("colorful floral decoration", n = 6) |>
+  select(id, ceramic_category, production_origin, type_name, similarity)
+```
+
+```{r}
+# Search and group results by production origin
+nearest(images, "glazed pottery", n = 50) |>
+  filter(!is.na(production_origin), production_origin != "null") |>
+  group_by(production_origin) |>
+  summarize(
+    count = n(),
+    mean_similarity = mean(similarity)
+  ) |>
+  arrange(desc(count))
+```
+
+```{r}
+# Find porcelain, examine glaze types
+images |>
+  filter(ceramic_category == "porcelain") |>
+  count(glaze, sort = TRUE) |>
+  filter(!is.na(glaze), glaze != "null")
+```
