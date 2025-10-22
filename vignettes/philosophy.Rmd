@@ -1,0 +1,210 @@
+---
+title: "Why TidyVec?"
+author: "Nick Gauthier"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Why TidyVec?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## The Problem
+
+Vector embeddings have become essential for modern data work: semantic search, RAG systems, similarity analysis, and more. However, most vector database tools come from a different software tradition than typical R workflows.
+
+Traditional vector databases (Chroma, Pinecone, Weaviate, FAISS) are designed by Python ML engineers building production services. They think in terms of:
+
+- **Services and APIs**: Client-server architectures, HTTP endpoints, configuration files
+- **Imperative operations**: Insert, update, delete, query as separate transactions
+- **Specialized storage**: Custom data structures optimized for billions of vectors
+
+This design makes sense for production systems at scale. But it creates friction for R users who think differently about data.
+
+## How R Users Think About Data
+
+R users, especially those in the tidyverse ecosystem, work with a different mental model:
+
+- **Data lives in data frames**: Your data starts as a tibble and stays as a tibble
+- **Operations compose via pipes**: Chain transformations together with `%>%` or `|>`
+- **Variables are columns**: Add a new variable? Add a new column. Filter rows? Use `filter()`.
+
+When you need vector embeddings in this workflow, existing tools force you to:
+
+1. Extract data from your tibble
+2. Insert it into a separate vector database
+3. Query the database
+4. Join results back to your original data
+
+This context switching is expensive. You lose the ability to use `dplyr` verbs, `ggplot2` visualizations, and the rest of the tidyverse toolkit on your vector-enriched data.
+
+## TidyVec's Approach
+
+TidyVec treats embeddings as just another column in your tibble:
+
+```r
+library(tidyvec)
+
+# Start with a normal tibble
+books <- tibble(
+  title = c("Statistical Learning", "Data Visualization", "Machine Learning"),
+  year = c(2020, 2019, 2021)
+)
+
+# Add embeddings as a column
+books_vec <- books %>%
+  vec(embedding_fn = my_embedder) %>%
+  embed(content_column = "title")
+
+# Now use standard dplyr operations
+books_vec %>%
+  filter(year >= 2020) %>%
+  nearest("statistics with R", n = 2) %>%
+  mutate(recent = year > 2020)
+```
+
+The embedding is stored alongside your data. There's no separate database to manage, no client-server connection, no context switching.
+
+## What This Enables
+
+Because embeddings are just another column, you can:
+
+**Filter before searching**: Narrow the search space using your existing data columns
+```r
+books_vec %>%
+  filter(category == "statistics") %>%
+  nearest("linear regression")
+```
+
+**Filter after searching**: Apply similarity thresholds or other criteria to results
+```r
+books_vec %>%
+  nearest("machine learning", n = 100) %>%
+  filter(similarity > 0.5, year >= 2020)
+```
+
+**Combine with joins and grouping**:
+```r
+books_vec %>%
+  nearest("data science", n = 10) %>%
+  left_join(authors, by = "author_id") %>%
+  group_by(publisher) %>%
+  summarize(avg_similarity = mean(similarity))
+```
+
+**Visualize with ggplot2**:
+```r
+books_vec %>%
+  nearest("statistics", n = 20) %>%
+  ggplot(aes(x = year, y = similarity)) +
+  geom_point()
+```
+
+**Save and load with standard tools**:
+```r
+# Save entire collection (data + embeddings)
+write_vec(books_vec, "books.qs")
+
+# Load later
+books_vec <- read_vec("books.qs")
+```
+
+These operations feel natural because they use the same verbs you already know.
+
+## What TidyVec Is Not
+
+TidyVec is deliberately lightweight. It is **not** designed for:
+
+- **Production applications** serving millions of queries per second
+- **Billion-vector datasets** requiring distributed storage
+- **Sub-millisecond query latency** requirements
+- **Multi-user concurrent access** with transactions
+
+For these use cases, specialized vector databases are the right choice.
+
+## Where TidyVec Fits
+
+TidyVec is designed for:
+
+- **Learning and teaching**: Understanding how embeddings work without infrastructure complexity
+- **Prototyping**: Testing ideas quickly before investing in production infrastructure
+- **Personal-scale projects**: Research notebooks, personal collections, small applications
+- **Data exploration**: Interactive analysis of embeddings alongside other variables
+- **Integration-first workflows**: When staying in the tidyverse matters more than raw speed
+
+The typical TidyVec user has hundreds to tens of thousands of items, not millions. Query latency of 10-100ms is acceptable. The workflow happens in RStudio, not in a microservices architecture.
+
+## Design Principles
+
+TidyVec follows these principles:
+
+1. **Embeddings are data**: Store them in data frames, not separate databases
+2. **Compose with existing tools**: Work with dplyr, ggplot2, and other tidyverse packages
+3. **Fail fast and clearly**: Simple error messages, no hidden complexity
+4. **No infrastructure required**: No servers, no configuration files, no Docker containers
+5. **Lazy by default**: Don't compute embeddings until you explicitly call `embed()`
+6. **Explicit over implicit**: Make batching, caching, and other optimizations visible
+
+## An Example Workflow
+
+Here's a realistic workflow that shows why the tidyverse integration matters:
+
+```r
+library(tidyverse)
+library(tidyvec)
+
+# Start with research notes
+notes <- read_csv("my_notes.csv") %>%
+  mutate(year = lubridate::year(date))
+
+# Add embeddings
+embedder <- embedder_tfidf(notes$content)
+notes_vec <- notes %>%
+  vec(embedding_fn = embedder) %>%
+  embed(content_column = "content")
+
+# Find relevant notes from last year
+notes_vec %>%
+  filter(year == 2024) %>%
+  nearest("machine learning with R", n = 5) %>%
+  select(title, date, similarity) %>%
+  arrange(desc(similarity))
+
+# Discover thematic clusters
+notes_vec %>%
+  cluster_embeddings(n_clusters = 5) %>%
+  group_by(cluster) %>%
+  summarize(
+    count = n(),
+    example = first(title),
+    avg_year = mean(year)
+  )
+
+# Visualize embedding space by year
+notes_vec %>%
+  viz_embeddings(
+    method = "umap",
+    color = "year",
+    labels = "title"
+  )
+
+# Save for later
+write_vec(notes_vec, "notes_embedded.qs")
+```
+
+Every step uses familiar tidyverse patterns. There's no mental overhead from switching between R and a separate database system.
+
+## Conclusion
+
+TidyVec exists because R users need vector embeddings, but they also need to stay in their natural workflow. By treating embeddings as just another column in a tibble, TidyVec eliminates the impedance mismatch between traditional vector databases and tidyverse data analysis.
+
+This approach has trade-offs. You won't get the raw performance or scalability of specialized systems. But for learning, prototyping, and personal-scale projects, the integration benefits outweigh the performance costs.
+
+If your data fits in memory and your queries can take 10-100ms, TidyVec lets you work with embeddings using the same verbs and patterns you already know.
