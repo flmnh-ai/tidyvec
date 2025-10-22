@@ -36,9 +36,24 @@ test_that("ap_at_k handles edge cases", {
   expect_equal(ap_at_k("A", c("B", "A"), k = 1), 0.0)
 })
 
+test_that("ap_at_k works with numeric IDs", {
+  # Perfect retrieval with numeric IDs
+  relevant <- c(1, 2, 3)
+  retrieved <- c(1, 2, 3, 4, 5)
+  expect_equal(ap_at_k(relevant, retrieved, k = 5), 1.0)
+
+  # Partial retrieval with numeric IDs
+  relevant2 <- c(1, 2, 3, 4)
+  retrieved2 <- c(1, 10, 2, 20, 30)
+  # Precision at positions: 1/1 at pos 1, 2/3 at pos 3
+  expect_equal(ap_at_k(relevant2, retrieved2, k = 5), (1.0 + 2/3) / 2, tolerance = 0.01)
+
+  # No relevant items found with numeric IDs
+  expect_equal(ap_at_k(c(1, 2, 3), c(4, 5, 6), k = 3), 0)
+})
+
 test_that("ap_at_k validates inputs", {
-  expect_error(ap_at_k(1:3, c("A", "B"), k = 5))
-  expect_error(ap_at_k(c("A", "B"), 1:3, k = 5))
+  expect_error(ap_at_k(list(1, 2), c("A", "B"), k = 5))  # List not allowed
   expect_error(ap_at_k(c("A"), c("B"), k = 0))
   expect_error(ap_at_k(c("A"), c("B"), k = -1))
 })
@@ -59,6 +74,19 @@ test_that("precision_at_k calculates correct precision", {
   expect_equal(precision_at_k(relevant, retrieved3, k = 3), 0.0)
 })
 
+test_that("precision_at_k works with numeric IDs", {
+  relevant <- c(1, 2, 3)
+
+  # All top-k are relevant
+  expect_equal(precision_at_k(relevant, c(1, 2, 3, 4, 5), k = 3), 1.0)
+
+  # Half are relevant
+  expect_equal(precision_at_k(relevant, c(1, 10, 2, 20, 3), k = 4), 0.5)
+
+  # None are relevant
+  expect_equal(precision_at_k(relevant, c(10, 20, 30), k = 3), 0.0)
+})
+
 test_that("recall_at_k calculates correct recall", {
   relevant <- c("A", "B", "C", "D")
 
@@ -77,6 +105,19 @@ test_that("recall_at_k calculates correct recall", {
 
 test_that("recall_at_k handles empty relevant set", {
   expect_equal(recall_at_k(character(0), c("A", "B"), k = 5), 0)
+})
+
+test_that("recall_at_k works with numeric IDs", {
+  relevant <- c(1, 2, 3, 4)
+
+  # All relevant items found
+  expect_equal(recall_at_k(relevant, c(1, 2, 3, 4, 5), k = 5), 1.0)
+
+  # Half found
+  expect_equal(recall_at_k(relevant, c(1, 2, 10, 20, 30), k = 5), 0.5)
+
+  # None found
+  expect_equal(recall_at_k(relevant, c(10, 20, 30), k = 3), 0.0)
 })
 
 test_that("calculate_baseline computes correct baseline", {
