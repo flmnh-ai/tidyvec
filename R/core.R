@@ -145,7 +145,12 @@ embed <- function(x, content_column, embedding_fn = NULL, force = FALSE, ...) {
   # Get embedding function
   fn <- embedding_fn %||% embedding_fn(x)
   if (is.null(fn)) {
-    stop("No embedding function provided. Did you forget to pass embedding_fn to vec()?")
+    stop(
+      "No embedding function available.\n",
+      "  - If this collection was created with vec(), pass embedding_fn to vec()\n",
+      "  - If this collection was loaded from disk, use: read_vec(file, embedding_fn = embedder_hf(...))\n",
+      "  - Or pass embedding_fn directly to embed(): embed(x, col, embedding_fn = ...)"
+    )
   }
 
   # Ensure content column exists
@@ -263,7 +268,12 @@ nearest <- function(x, query, n = 5, as_embedding = FALSE,
   if (!as_embedding) {
     fn <- embedding_fn(x)
     if (is.null(fn)) {
-      stop("No embedding function available to process query. Did you forget to pass embedding_fn to vec()?")
+      stop(
+        "No embedding function available to process query.\n",
+        "  - If this collection was created with vec(), pass embedding_fn to vec()\n",
+        "  - If this collection was loaded from disk, use: read_vec(file, embedding_fn = embedder_hf(...))\n",
+        "  - Or use an existing embedding: nearest(x, embedding_vector, as_embedding = TRUE)"
+      )
     }
     query_embedding <- fn(query)
   } else {
@@ -429,16 +439,36 @@ write_vec <- function(x, file) {
     stop("Package 'qs' is required for persistence. Install with: install.packages('qs')")
   }
 
-  qs::qsave(x, file)
+  # Always strip embedding function (Python objects cannot be serialized)
+  if (!is.null(attr(x, "embedding_fn"))) {
+    x_save <- x
+    attr(x_save, "embedding_fn") <- NULL
+  } else {
+    x_save <- x
+  }
+
+  qs::qsave(x_save, file)
   invisible(x)
 }
 
 #' Read a tidyvec collection from disk
 #'
 #' @param file Path to tidyvec collection file
+#' @param embedding_fn Optional embedding function to restore. Required only if you
+#'   need to embed new content or query with text/images. Not needed for searching
+#'   with existing embeddings, filtering, or analysis.
 #' @return A tidyvec object
 #' @export
-read_vec <- function(file) {
+#' @examples
+#' \dontrun{
+#' # Load for analysis (no embedding function needed)
+#' collection <- read_vec("my_collection.qs")
+#'
+#' # Load with embedding function for new queries
+#' embedder <- embedder_hf("sentence-transformers/all-MiniLM-L6-v2")
+#' collection <- read_vec("my_collection.qs", embedding_fn = embedder)
+#' }
+read_vec <- function(file, embedding_fn = NULL) {
   if (!requireNamespace("qs", quietly = TRUE)) {
     stop("Package 'qs' is required for persistence. Install with: install.packages('qs')")
   }
@@ -447,6 +477,11 @@ read_vec <- function(file) {
 
   if (!inherits(x, "tidyvec")) {
     stop("File does not contain a tidyvec object")
+  }
+
+  # Restore embedding function if provided
+  if (!is.null(embedding_fn)) {
+    attr(x, "embedding_fn") <- embedding_fn
   }
 
   x
