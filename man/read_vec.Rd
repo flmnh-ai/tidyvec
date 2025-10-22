@@ -4,14 +4,28 @@
 \alias{read_vec}
 \title{Read a tidyvec collection from disk}
 \usage{
-read_vec(file)
+read_vec(file, embedding_fn = NULL)
 }
 \arguments{
 \item{file}{Path to tidyvec collection file}
+
+\item{embedding_fn}{Optional embedding function to restore. Required only if you
+need to embed new content or query with text/images. Not needed for searching
+with existing embeddings, filtering, or analysis.}
 }
 \value{
 A tidyvec object
 }
 \description{
 Read a tidyvec collection from disk
+}
+\examples{
+\dontrun{
+# Load for analysis (no embedding function needed)
+collection <- read_vec("my_collection.qs")
+
+# Load with embedding function for new queries
+embedder <- embedder_hf("sentence-transformers/all-MiniLM-L6-v2")
+collection <- read_vec("my_collection.qs", embedding_fn = embedder)
+}
 }

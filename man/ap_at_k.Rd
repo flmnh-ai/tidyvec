@@ -7,9 +7,9 @@
 ap_at_k(relevant_ids, retrieved_ids, k = 25)
 }
 \arguments{
-\item{relevant_ids}{Character vector of IDs for relevant items (ground truth)}
+\item{relevant_ids}{Vector of IDs for relevant items (ground truth)}
 
-\item{retrieved_ids}{Character vector of IDs for retrieved items (ranked by similarity)}
+\item{retrieved_ids}{Vector of IDs for retrieved items (ranked by similarity)}
 
 \item{k}{Number of top results to consider (default: 25)}
 }
@@ -30,6 +30,9 @@ It rewards placing relevant items higher in the ranking.
 relevant <- c("doc1", "doc2", "doc3")
 retrieved <- c("doc1", "doc5", "doc2", "doc6", "doc3")
 ap_at_k(relevant, retrieved, k = 5)  # High score: all relevant items found
+
+# Works with numeric IDs too
+ap_at_k(c(1, 2, 3), c(1, 5, 2, 6, 3), k = 5)
 }
 
 }

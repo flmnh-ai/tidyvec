@@ -166,9 +166,17 @@ Save and load collections to avoid re-computing embeddings:
 # Save collection to disk
 write_vec(books_vec, "books_collection.qs")
 
-# Load later
+# Load for analysis (no embedding function needed)
 books_vec <- read_vec("books_collection.qs")
+
+# Load with embedding function (for querying with new text/images)
+embedder <- embedder_hf("sentence-transformers/all-MiniLM-L6-v2")
+books_vec <- read_vec("books_collection.qs", embedding_fn = embedder)
 ```
+
+**Note:** Embedding functions are not persisted (Python objects cannot be serialized).
+Restore the embedding function when loading if you need to embed new content or query
+with text/images. Not needed for searching with existing embeddings or analysis.
 
 ### Hybrid Search
 

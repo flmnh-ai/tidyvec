@@ -7,9 +7,9 @@
 query_metrics(relevant_ids, retrieved_ids, k = 25)
 }
 \arguments{
-\item{relevant_ids}{Character vector of IDs for relevant items}
+\item{relevant_ids}{Vector of IDs for relevant items}
 
-\item{retrieved_ids}{Character vector of IDs for retrieved items (ranked)}
+\item{retrieved_ids}{Vector of IDs for retrieved items (ranked)}
 
 \item{k}{Number of top results to consider (default: 25)}
 }
@@ -30,6 +30,9 @@ print(metrics)
 # $ap: 0.7667
 # $precision: 0.6
 # $recall: 0.75
+
+# Works with numeric IDs too
+query_metrics(c(1, 2, 3, 4), c(1, 5, 2, 6, 3, 7), k = 5)
 }
 
 }

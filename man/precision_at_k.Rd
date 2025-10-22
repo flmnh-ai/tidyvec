@@ -7,9 +7,9 @@
 precision_at_k(relevant_ids, retrieved_ids, k = 25)
 }
 \arguments{
-\item{relevant_ids}{Character vector of IDs for relevant items}
+\item{relevant_ids}{Vector of IDs for relevant items}
 
-\item{retrieved_ids}{Character vector of IDs for retrieved items}
+\item{retrieved_ids}{Vector of IDs for retrieved items}
 
 \item{k}{Number of top results to consider (default: 25)}
 }
@@ -27,6 +27,9 @@ Precision@k = (# relevant items in top k) / k
 relevant <- c("doc1", "doc2", "doc3")
 retrieved <- c("doc1", "doc5", "doc2", "doc6", "doc3")
 precision_at_k(relevant, retrieved, k = 5)  # 3/5 = 0.6
+
+# Works with numeric IDs too
+precision_at_k(c(1, 2, 3), c(1, 5, 2, 6, 3), k = 5)
 }
 
 }
