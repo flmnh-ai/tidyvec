@@ -3,8 +3,8 @@
 #' Computes average precision for a single query, measuring how well relevant
 #' items are ranked in the retrieval results.
 #'
-#' @param relevant_ids Character vector of IDs for relevant items (ground truth)
-#' @param retrieved_ids Character vector of IDs for retrieved items (ranked by similarity)
+#' @param relevant_ids Vector of IDs for relevant items (ground truth)
+#' @param retrieved_ids Vector of IDs for retrieved items (ranked by similarity)
 #' @param k Number of top results to consider (default: 25)
 #'
 #' @return Numeric value between 0 and 1, where 1 is perfect retrieval
@@ -19,12 +19,15 @@
 #' relevant <- c("doc1", "doc2", "doc3")
 #' retrieved <- c("doc1", "doc5", "doc2", "doc6", "doc3")
 #' ap_at_k(relevant, retrieved, k = 5)  # High score: all relevant items found
+#'
+#' # Works with numeric IDs too
+#' ap_at_k(c(1, 2, 3), c(1, 5, 2, 6, 3), k = 5)
 #' }
 #'
 #' @export
 ap_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
-  if (!is.character(relevant_ids) || !is.character(retrieved_ids)) {
-    stop("relevant_ids and retrieved_ids must be character vectors")
+  if (!is.atomic(relevant_ids) || !is.atomic(retrieved_ids)) {
+    stop("relevant_ids and retrieved_ids must be atomic vectors")
   }
 
   if (k < 1) {
@@ -58,8 +61,8 @@ ap_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
 #'
 #' Computes the proportion of retrieved items that are relevant.
 #'
-#' @param relevant_ids Character vector of IDs for relevant items
-#' @param retrieved_ids Character vector of IDs for retrieved items
+#' @param relevant_ids Vector of IDs for relevant items
+#' @param retrieved_ids Vector of IDs for retrieved items
 #' @param k Number of top results to consider (default: 25)
 #'
 #' @return Numeric value between 0 and 1
@@ -72,12 +75,15 @@ ap_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
 #' relevant <- c("doc1", "doc2", "doc3")
 #' retrieved <- c("doc1", "doc5", "doc2", "doc6", "doc3")
 #' precision_at_k(relevant, retrieved, k = 5)  # 3/5 = 0.6
+#'
+#' # Works with numeric IDs too
+#' precision_at_k(c(1, 2, 3), c(1, 5, 2, 6, 3), k = 5)
 #' }
 #'
 #' @export
 precision_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
-  if (!is.character(relevant_ids) || !is.character(retrieved_ids)) {
-    stop("relevant_ids and retrieved_ids must be character vectors")
+  if (!is.atomic(relevant_ids) || !is.atomic(retrieved_ids)) {
+    stop("relevant_ids and retrieved_ids must be atomic vectors")
   }
 
   if (k < 1) {
@@ -94,8 +100,8 @@ precision_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
 #'
 #' Computes the proportion of relevant items that were retrieved.
 #'
-#' @param relevant_ids Character vector of IDs for relevant items
-#' @param retrieved_ids Character vector of IDs for retrieved items
+#' @param relevant_ids Vector of IDs for relevant items
+#' @param retrieved_ids Vector of IDs for retrieved items
 #' @param k Number of top results to consider (default: 25)
 #'
 #' @return Numeric value between 0 and 1
@@ -108,12 +114,15 @@ precision_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
 #' relevant <- c("doc1", "doc2", "doc3")
 #' retrieved <- c("doc1", "doc5", "doc2", "doc6", "doc3")
 #' recall_at_k(relevant, retrieved, k = 5)  # 3/3 = 1.0 (all relevant items found)
+#'
+#' # Works with numeric IDs too
+#' recall_at_k(c(1, 2, 3), c(1, 5, 2, 6, 3), k = 5)
 #' }
 #'
 #' @export
 recall_at_k <- function(relevant_ids, retrieved_ids, k = 25) {
-  if (!is.character(relevant_ids) || !is.character(retrieved_ids)) {
-    stop("relevant_ids and retrieved_ids must be character vectors")
+  if (!is.atomic(relevant_ids) || !is.atomic(retrieved_ids)) {
+    stop("relevant_ids and retrieved_ids must be atomic vectors")
   }
 
   if (k < 1) {
@@ -397,8 +406,8 @@ evaluate_retrieval <- function(x,
 #' Computes multiple evaluation metrics (AP, Precision, Recall) for a single
 #' retrieval result.
 #'
-#' @param relevant_ids Character vector of IDs for relevant items
-#' @param retrieved_ids Character vector of IDs for retrieved items (ranked)
+#' @param relevant_ids Vector of IDs for relevant items
+#' @param retrieved_ids Vector of IDs for retrieved items (ranked)
 #' @param k Number of top results to consider (default: 25)
 #'
 #' @return A named list with ap, precision, and recall
@@ -413,6 +422,9 @@ evaluate_retrieval <- function(x,
 #' # $ap: 0.7667
 #' # $precision: 0.6
 #' # $recall: 0.75
+#'
+#' # Works with numeric IDs too
+#' query_metrics(c(1, 2, 3, 4), c(1, 5, 2, 6, 3, 7), k = 5)
 #' }
 #'
 #' @export
